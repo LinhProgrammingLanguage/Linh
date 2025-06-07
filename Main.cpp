@@ -1,246 +1,124 @@
-// main.cpp
-#include "Parsing/Lexer/Lexer.hpp"
-#include "Parsing/Parser/Parser.hpp" // Include Parser
-#include "Parsing/Semantic/SemanticAnalyzer.hpp"
-#include "Parsing/tokenizer/TokenTypeUtils.hpp"
+#include "LinhC/Parsing/Lexer/Lexer.hpp"
+#include "LinhC/Parsing/Parser/Parser.hpp"
+#include "LinhC/Parsing/AST/ASTPrinter.hpp" // For printing AST
+#include "LinhC/Parsing/Semantic/SemanticAnalyzer.hpp"
+#include "LinhC/Bytecode/BytecodeEmitter.hpp"
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <string> // For std::string
 
-// Function to print AST (VERY basic example, needs a proper AST Printer/Visitor)
-void print_ast_node(const Linh::AST::StmtPtr &stmt_node, int indent = 0); // Forward declare
-void print_ast_expr(const Linh::AST::ExprPtr &expr_node, int indent);     // Forward declare
-
-// Basic AST printer implementation (put in a separate file later)
-void print_indent(int indent)
+int main(int argc, char **argv)
 {
-    for (int i = 0; i < indent; ++i)
-        std::cout << "  ";
-}
+    std::string source_code;
+    std::ifstream file("test.li"); // Try to read from file test.li
 
-void print_ast_node(const Linh::AST::StmtPtr &stmt_node, int indent)
-{
-    if (!stmt_node)
+    if (file)
     {
-        print_indent(indent);
-        std::cout << "(Null StmtNode)\n";
-        return;
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        source_code = buffer.str();
+        file.close();
+        std::cout << "--- Loaded code from test.li ---" << std::endl;
     }
-    std::visit([indent](auto &&arg)
-               {
-        using T = std::decay_t<decltype(arg)>;
-        print_indent(indent);
-        if constexpr (std::is_same_v<T, Linh::AST::ExpressionStmt>) {
-            std::cout << "ExpressionStmt:\n";
-            print_ast_expr(arg.expression, indent + 1);
-        } else if constexpr (std::is_same_v<T, Linh::AST::PrintStmt>) {
-            std::cout << "PrintStmt (token: " << arg.keyword.lexeme << "):\n";
-            for(const auto& expr : arg.expressions) {
-                print_ast_expr(expr, indent + 1);
-            }
-        } else if constexpr (std::is_same_v<T, Linh::AST::VarDeclStmt>) {
-            std::cout << "VarDeclStmt (" << arg.keyword.lexeme << " " << arg.name.lexeme;
-            if(arg.type_annotation) {
-                std::cout << ": " << arg.type_annotation->primary_type_token.lexeme;
-                // TODO: print complex_type_tokens
-            }
-            std::cout << "):\n";
-            if (arg.initializer) {
-                print_indent(indent + 1); std::cout << "Initializer:\n";
-                print_ast_expr(*arg.initializer, indent + 2);
-            } else {
-                print_indent(indent + 1); std::cout << "(No Initializer)\n";
-            }
-        } else if constexpr (std::is_same_v<T, Linh::AST::BlockStmt>) {
-            std::cout << "BlockStmt:\n";
-            for (const auto& s : arg.statements) {
-                print_ast_node(s, indent + 1);
-            }
-        } else if constexpr (std::is_same_v<T, Linh::AST::IfStmt>) {
-            std::cout << "IfStmt:\n";
-            print_indent(indent+1); std::cout << "Condition:\n";
-            print_ast_expr(arg.condition, indent + 2);
-            print_indent(indent+1); std::cout << "ThenBranch:\n";
-            print_ast_node(arg.then_branch, indent + 2);
-            if(arg.else_branch) {
-                print_indent(indent+1); std::cout << "ElseBranch:\n";
-                print_ast_node(*arg.else_branch, indent + 2);
-            }
-        } else if constexpr (std::is_same_v<T, Linh::AST::WhileStmt>) {
-            std::cout << "WhileStmt:\n";
-            print_indent(indent+1); std::cout << "Condition:\n";
-            print_ast_expr(arg.condition, indent + 2);
-            print_indent(indent+1); std::cout << "Body:\n";
-            print_ast_node(arg.body, indent + 2);
-        } else if constexpr (std::is_same_v<T, Linh::AST::FuncDeclStmt>) {
-            std::cout << "FuncDeclStmt (" << arg.name.lexeme << "):\n";
-            // TODO: Print params, return type, body
-        } else if constexpr (std::is_same_v<T, Linh::AST::ReturnStmt>) {
-            std::cout << "ReturnStmt:\n";
-            if(arg.value) {
-                print_ast_expr(*arg.value, indent + 1);
-            } else {
-                print_indent(indent+1); std::cout << "(No return value)\n";
-            }
-        }
-         else {
-            std::cout << "Unknown StmtNode type\n";
-        } }, *stmt_node);
-}
-
-void print_ast_expr(const Linh::AST::ExprPtr &expr_node, int indent)
-{
-    if (!expr_node)
+    else
     {
-        print_indent(indent);
-        std::cout << "(Null ExprNode)\n";
-        return;
-    }
-    std::visit([indent](auto &&arg)
-               {
-        using T = std::decay_t<decltype(arg)>;
-        print_indent(indent);
-        if constexpr (std::is_same_v<T, Linh::AST::LiteralExpr>) {
-            std::cout << "LiteralExpr: ";
-            std::visit([](auto&& val_arg){
-                 if constexpr (std::is_same_v<std::decay_t<decltype(val_arg)>, std::string>) std::cout << "\"" << val_arg << "\"";
-                 else if constexpr (std::is_same_v<std::decay_t<decltype(val_arg)>, bool>) std::cout << (val_arg ? "true" : "false");
-                 else if constexpr (std::is_same_v<std::decay_t<decltype(val_arg)>, std::monostate>) std::cout << "(empty)";
-                 else std::cout << val_arg;
-            }, arg.value.value);
-            std::cout << "\n";
-        } else if constexpr (std::is_same_v<T, Linh::AST::UnaryExpr>) {
-            std::cout << "UnaryExpr (op: " << arg.op.lexeme << "):\n";
-            print_ast_expr(arg.right, indent + 1);
-        } else if constexpr (std::is_same_v<T, Linh::AST::BinaryExpr>) {
-            std::cout << "BinaryExpr (op: " << arg.op.lexeme << "):\n";
-            print_indent(indent + 1); std::cout << "Left:\n";
-            print_ast_expr(arg.left, indent + 2);
-            print_indent(indent + 1); std::cout << "Right:\n";
-            print_ast_expr(arg.right, indent + 2);
-        } else if constexpr (std::is_same_v<T, Linh::AST::GroupingExpr>) {
-            std::cout << "GroupingExpr:\n";
-            print_ast_expr(arg.expression, indent + 1);
-        } else if constexpr (std::is_same_v<T, Linh::AST::VariableExpr>) {
-            std::cout << "VariableExpr (name: " << arg.name.lexeme << ")\n";
-        } else if constexpr (std::is_same_v<T, Linh::AST::AssignExpr>) {
-            std::cout << "AssignExpr (name: " << arg.name.lexeme << "):\n";
-            print_indent(indent + 1); std::cout << "Value:\n";
-            print_ast_expr(arg.value, indent + 2);
-        } else if constexpr (std::is_same_v<T, Linh::AST::CallExpr>) {
-            std::cout << "CallExpr:\n";
-            print_indent(indent+1); std::cout << "Callee:\n";
-            print_ast_expr(arg.callee, indent + 2);
-            print_indent(indent+1); std::cout << "Arguments:\n";
-            for(const auto& an_arg : arg.arguments) {
-                print_ast_expr(an_arg, indent + 2);
-            }
+        std::cerr << "Cannot open file test.li. Using minimal default code." << std::endl;
+        source_code = R"(
+        print("Hello from default Linh code!");
+        var x = 10;
+        if (x > 5) {
+            print("x is greater than 5");
+        } else {
+            print("x is not greater than 5");
         }
-        else {
-            std::cout << "Unknown ExprNode type\n";
-        } }, *expr_node);
-}
+    )";
+    }
 
-void run_analysis_test(const std::string &source_code, const std::string &description)
-{
-    std::cout << "\n--- Testing Analyzer: " << description << " ---\n";
-    std::cout << "--- Source Code ---\n"
-              << source_code << "\n-------------------\n";
+    std::cout << "--- Source Code Being Parsed ---\n"
+              << source_code << "\n--------------------------------\n";
 
     Linh::Lexer lexer(source_code);
     std::vector<Linh::Token> tokens = lexer.scan_tokens();
 
-    // Optional: Print tokens
-    // ...
+    std::cout << "\n--- Tokens ---" << std::endl;
+    bool lexer_has_error = false;
+    for (const auto &token : tokens)
+    {
+        std::cout << token.to_string() << std::endl;
+        if (token.type == Linh::TokenType::ERROR)
+        {
+            lexer_has_error = true;
+        }
+    }
 
+    if (lexer_has_error)
+    {
+        std::cerr << "\nLexer error, aborting parse." << std::endl;
+        return 1;
+    }
+
+    std::cout << "\n--- Abstract Syntax Tree (AST) ---" << std::endl;
     Linh::Parser parser(tokens);
-    Linh::AST::StmtList ast;
-    bool parse_had_error = false;
-    try
+    Linh::AST::StmtList ast_statements = parser.parse();
+
+    if (parser.had_error())
     {
-        ast = parser.parse(); // Assume parser might throw on severe errors or sets a flag
-                              // Or, change parser.parse() to return bool/optional
+        std::cerr << "\nParser encountered errors. AST may be incomplete or empty." << std::endl;
+        // Still try to print AST to see how far it parsed (if ast_statements is not empty)
     }
-    catch (const Linh::ParserError &e)
+
+    if (!ast_statements.empty() || !parser.had_error())
+    { // Print AST if no error or if there is something to print
+        Linh::AST::ASTPrinter ast_printer;
+        std::cout << ast_printer.print(ast_statements) << std::endl;
+    }
+    else if (parser.had_error() && ast_statements.empty())
     {
-        std::cout << "Parsing failed with ParserError (already printed).\n";
-        parse_had_error = true;
+        std::cout << "(AST is empty due to parsing errors)" << std::endl;
     }
-    catch (const std::exception &e)
+
+    // --- Semantic Analysis ---
+    Linh::Semantic::SemanticAnalyzer sema;
+    sema.analyze(ast_statements);
+    if (!sema.errors.empty())
     {
-        std::cout << "Parsing failed with std::exception: " << e.what() << std::endl;
-        parse_had_error = true;
+        std::cerr << "\nSemantic errors:\n";
+        for (const auto &err : sema.errors)
+        {
+            std::cerr << "[Line " << err.line << ", Col " << err.column << "] " << err.message << std::endl;
+        }
+        std::cout << "\nSemantic analysis failed due to errors." << std::endl;
+        return 1;
     }
 
-    if (parse_had_error || (ast.empty() && !source_code.empty() && source_code.find_first_not_of(" \t\n\r") != std::string::npos))
-    { // Check if AST is empty but source code contains non-whitespace characters
-        std::cout << "Skipping semantic analysis due to parsing errors or empty AST.\n";
-        return;
-    }
-
-    std::cout << "--- AST (from Parser) ---\n";
-    for (const auto &stmt_node : ast)
+    if (parser.had_error())
     {
-        print_ast_node(stmt_node);
+        std::cout << "\nParse failed due to parser errors." << std::endl;
+        return 1;
     }
-    std::cout << "-----------\n";
 
-    Linh::Semantic::SemanticAnalyzer analyzer;
-    analyzer.analyze(ast);
+    // --- Bytecode ---
+    Linh::BytecodeEmitter emitter;
+    emitter.emit(ast_statements);
 
-    if (analyzer.had_error())
+    // In kết quả bytecode (demo)
+    const auto &chunk = emitter.get_chunk();
+    for (const auto &instr : chunk)
     {
-        std::cout << "Semantic analysis failed.\n";
+        std::cout << "Op: " << static_cast<int>(instr.opcode);
+        // In toán hạng nếu có
+        if (std::holds_alternative<int64_t>(instr.operand))
+            std::cout << " " << std::get<int64_t>(instr.operand);
+        else if (std::holds_alternative<double>(instr.operand))
+            std::cout << " " << std::get<double>(instr.operand);
+        else if (std::holds_alternative<std::string>(instr.operand))
+            std::cout << " \"" << std::get<std::string>(instr.operand) << "\"";
+        else if (std::holds_alternative<bool>(instr.operand))
+            std::cout << " " << (std::get<bool>(instr.operand) ? "true" : "false");
+        std::cout << std::endl;
     }
-    else
-    {
-        std::cout << "Semantic analysis completed successfully.\n";
-    }
-    std::cout << "--------------------------\n";
-}
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
-{
-    if (argc > 1)
-    {
-        // ... (file reading logic) ...
-    }
-    else
-    {
-        std::cout << "No file provided. Running internal tests.\n";
-
-        // Sử dụng run_analysis_test thay vì run_parser_test
-        std::string test_code_semantic1 = R"(
-let x: int = 10;
-var y = "hello";
-print x, y;
-// let x = 20; // Error: Redeclaration in same scope (if check is implemented)
-)";
-        run_analysis_test(test_code_semantic1, "Basic Declarations and Print");
-
-        std::string test_code_semantic2 = R"(
-{
-    let scoped_var = true;
-    print scoped_var;
-}
-// print scoped_var; // Error: scoped_var not defined here
-)";
-        run_analysis_test(test_code_semantic2, "Scope Test");
-
-        std::string test_code_semantic3 = R"(
-// print undeclared_var; // Error: undeclared
-let a = 10;
-// a = "text"; // Error: type mismatch for 'let' (if type checking)
-const C = 100;
-// C = 200; // Error: assignment to const
-)";
-        run_analysis_test(test_code_semantic3, "Undeclared, Const Assign, Type Mismatch (future)");
-
-        std::string test_code_parser_error = "var err;";
-        run_analysis_test(test_code_parser_error, "Parser error propagation test (var decl)"); // Parser should catch this
-
-        std::string test_code_const_ok = "const VAL: int;"; // OK by spec (zero-value)
-        run_analysis_test(test_code_const_ok, "Const with type only (OK)");
-    }
+    std::cout << "\nParse succeeded!" << std::endl;
     return 0;
 }

@@ -1,0 +1,68 @@
+let test = "Linh";
+test = "Linh2"; // OK
+test = 0;       // Error: Type 'number' is not assignable to type 'string'.
+
+const c1 = 10;
+c1 = 20;            // Error: Cannot assign to 'c1' because it is declared as 'const'.
+
+let l1 = 5;
+l1 = 6;             //ok
+l1 = "string";      // Error: Cannot assign to 'l1' because it is declared as 'let'.
+
+var v1 = 1;
+v1 = 2; // ok
+v1 = "string"; // ok
+
+// --- Kiểm tra khai báo biến với các kiểu số mở rộng ---
+var a : int<8> = 1;      // OK
+var b : int<16> = 2;     // OK
+var c : int<512> = 3;    // Error: Invalid bit width
+var d : float<32> = 1.5; // OK
+var e : uint<128> = 5;   // OK
+var f : int<7> = 0;      // Error: Invalid bit width
+var g : bool<8> = true;  // Error: bool không hỗ trợ <>
+
+// --- Kiểm tra str<index> ---
+var s1 : str<2> = "Linh";    // OK, giá trị thực tế: "Li"
+var s2 : str<0> = "abc";     // Error: index phải > 0
+var s3 : str<any> = "abcdef"; // OK, không giới hạn
+var s4 : str = "abcdef";     // OK, không giới hạn
+
+// --- Kiểm tra map/array mở rộng ---
+var m1 : map<int, str> = {}; // OK
+var a1 : array<int> = [];    // OK
+
+// --- Kiểm tra kiểu không hỗ trợ mở rộng ---
+var v1 : bool<16> = false;   // Error
+var v2 : void<8>;            // Error
+var v3 : any<8>;             // Error
+var v4 : uninit<8>;          // Error
+
+// --- Kiểm tra let/const/var với uninit ---
+let l : int = uninit;        // Error
+const c : int = uninit;      // Error
+var v : int = uninit;        // OK
+
+// --- Kiểm tra đổi kiểu let/var ---
+let lt = "abc";
+lt = "def";      // OK
+lt = 123;        // Error: đổi kiểu let
+
+var vt = 1;
+vt = 2;          // OK
+vt = "str";      // OK (var đổi kiểu được)
+
+// --- Kiểm tra const ---
+const cc = 10;
+cc = 20;         // Error: const không cho gán lại
+
+// --- Kiểm tra khai báo trùng tên ---
+let x = 1;
+let x = 2;       // Error: redeclared
+
+func foo() {}
+let foo = 1;     // Error: trùng tên hàm
+
+// --- Kiểm tra str<index> khi gán lại ---
+var s5 : str<3> = "abcdef"; // OK, giá trị thực tế: "abc"
+s5 = "xyzuvw";              // Khi gán lại, giá trị thực tế: "xyz"
