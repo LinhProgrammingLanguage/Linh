@@ -30,14 +30,6 @@ Open a terminal in the project root and run:
 script\build\build.bat
 ```
 
-#### **macOS/Linux**
-
-Open a terminal in the project root and run:
-
-```sh
-./script/build/build.sh
-```
-
 This script will:
 
 - Configure CMake in the `build` directory
