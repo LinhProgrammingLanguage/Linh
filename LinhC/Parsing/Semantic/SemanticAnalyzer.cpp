@@ -76,7 +76,7 @@ namespace Linh
             int line = stmt->keyword.line;
             int col = stmt->keyword.column_start;
 
-            if (kw == "let" || kw == "const")
+            if (kw == "vas" || kw == "const")
             {
                 if (type_is_uninit)
                 {
@@ -472,8 +472,8 @@ namespace Linh
                 {
                     errors.emplace_back("Cannot assign to '" + name + "' because it is declared as 'const'.", expr->name.line, expr->name.column_start);
                 }
-                // Kiểm tra kiểu khi gán lại cho let/var nếu có thể xác định kiểu
-                if ((var_kinds.count(name) && (var_kinds[name] == "let" || var_kinds[name] == "var")) && var_types.count(name))
+                // Kiểm tra kiểu khi gán lại cho vas/var nếu có thể xác định kiểu
+                if ((var_kinds.count(name) && (var_kinds[name] == "vas" || var_kinds[name] == "var")) && var_types.count(name))
                 {
                     std::string old_type = var_types[name];
                     std::string new_type;
@@ -486,9 +486,9 @@ namespace Linh
                     }
                     if (!new_type.empty() && !old_type.empty() && new_type != old_type)
                     {
-                        if (var_kinds[name] == "let")
+                        if (var_kinds[name] == "vas")
                         {
-                            errors.emplace_back("Cannot change type of 'let' variable '" + name + "' from '" + old_type + "' to '" + new_type + "'.", expr->name.line, expr->name.column_start);
+                            errors.emplace_back("Cannot change type of 'vas' variable '" + name + "' from '" + old_type + "' to '" + new_type + "'.", expr->name.line, expr->name.column_start);
                         }
                         else if (var_kinds[name] == "var")
                         {

@@ -61,6 +61,46 @@ target_link_libraries(LinhApp PRIVATE
     LinhSemanticLib
 )
 
+include(FetchContent)
+FetchContent_Declare(
+  CPM
+  GIT_REPOSITORY https://github.com/cpm-cmake/CPM.cmake.git
+  GIT_TAG origin/master
+)
+FetchContent_MakeAvailable(CPM)
+
+# --- CPM: Boost.Multiprecision (chỉ riêng multiprecision) ---
+CPMAddPackage(
+  NAME boost_multiprecision
+  GITHUB_REPOSITORY boostorg/multiprecision
+  GIT_TAG boost-1.85.0
+)
+if(boost_multiprecision_ADDED)
+    message(STATUS "Boost.Multiprecision added via CPM")
+endif()
+
+# --- CPM: utf8-cpp ---
+CPMAddPackage(
+  NAME utf8cpp
+  GITHUB_REPOSITORY nemtrif/utfcpp
+  GIT_TAG v3.2.1
+  DOWNLOAD_ONLY ON
+)
+if(utf8cpp_ADDED)
+    message(STATUS "utf8-cpp added via CPM (download only)")
+endif()
+
+target_include_directories(LinhApp PRIVATE ${utf8cpp_SOURCE_DIR}/source)
+
+target_link_libraries(LinhApp PRIVATE
+    LinhLexerLib
+    LinhASTLib
+    LinhParserLib
+    LinhSemanticLib
+    boost_multiprecision
+    # Không cần utf8cpp vì chỉ là header-only, đã include ở trên
+)
+
 if(WIN32) 
     set(RESOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/appicon.rc")
     set(ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Linh.ico")

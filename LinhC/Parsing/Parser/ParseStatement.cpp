@@ -139,7 +139,7 @@ namespace Linh
         { // Khởi tạo rỗng
             consume(TokenType::SEMICOLON, "Mong đợi ';' sau initializer rỗng của for.");
         }
-        else if (peek().type == TokenType::VAR_KW || peek().type == TokenType::LET_KW || peek().type == TokenType::CONST_KW)
+        else if (peek().type == TokenType::VAR_KW || peek().type == TokenType::VAS_KW || peek().type == TokenType::CONST_KW)
         {
             // Nếu là khai báo biến, var_declaration đã consume keyword và cả dấu ';' ở cuối của nó.
             // Tuy nhiên, trong for-loop, var_declaration KHÔNG nên consume dấu ';'.

@@ -15,16 +15,16 @@ std::string version_number = "alpha-0.1";
 std::string language = "C++";
 
 /* author */
-std::string author = "Jkar / Hoa Tin Develop Team";
-std::string copyright = "Copyright (c) 2025 Hoa Tin Develop Team";
+std::string author = "Jkar / Sao Tin Developer Team";
+std::string copyright = "Copyright (c) 2025 Sao Tin Developer Team";
 std::string web = "https://linh.kesug.com";
 std::string email = "linhprogramminglanguage@gmail.com";
 std::string github = "https://github.com/LinhProgrammingLanguage/Linh.git";
 
-/* Hoa Tin Develop Team */
-std::string hoa_tin_develop_team = "Hoa Tin Develop Team";
-std::string hoa_tin_develop_team_web = "https://hoatin.kesug.com";
-std::string hoa_tin_develop_team_email = "hoatindev@gmail.com";
+/* Sao Tin Developer Team */
+std::string sao_tin_develop_team = "Sao Tin Developer Team";
+std::string sao_tin_develop_team_web = "https://saotin.kesug.com";
+std::string sao_tin_develop_team_email = "saotindev@gmail.com";
 
 /* default config */
 /* default number bit */

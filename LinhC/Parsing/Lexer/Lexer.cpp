@@ -8,7 +8,7 @@
 namespace Linh
 {
     const std::unordered_map<std::string, TokenType> Lexer::s_keywords = {
-        {"var", TokenType::VAR_KW}, {"let", TokenType::LET_KW}, {"const", TokenType::CONST_KW}, {"if", TokenType::IF_KW}, {"else", TokenType::ELSE_KW}, {"for", TokenType::FOR_KW}, {"while", TokenType::WHILE_KW}, {"func", TokenType::FUNC_KW}, {"return", TokenType::RETURN_KW}, {"true", TokenType::TRUE_KW}, {"false", TokenType::FALSE_KW}, {"int", TokenType::INT_KW}, {"uint", TokenType::UINT_KW}, {"str", TokenType::STR_KW}, {"bool", TokenType::BOOL_KW}, {"float", TokenType::FLOAT_KW}, {"map", TokenType::MAP_KW}, {"array", TokenType::ARRAY_KW}, {"void", TokenType::VOID_KW}, {"any", TokenType::ANY_KW}, {"input", TokenType::INPUT_KW}, {"print", TokenType::PRINT_KW}, {"break", TokenType::BREAK_KW}, {"continue", TokenType::CONTINUE_KW}, {"skip", TokenType::SKIP_KW}, {"switch", TokenType::SWITCH_KW}, {"case", TokenType::CASE_KW}, {"default", TokenType::DEFAULT_KW}, {"other", TokenType::OTHER_KW}, {"type", TokenType::TYPE_KW},
+        {"var", TokenType::VAR_KW}, {"vas", TokenType::VAS_KW}, {"const", TokenType::CONST_KW}, {"if", TokenType::IF_KW}, {"else", TokenType::ELSE_KW}, {"for", TokenType::FOR_KW}, {"while", TokenType::WHILE_KW}, {"func", TokenType::FUNC_KW}, {"return", TokenType::RETURN_KW}, {"true", TokenType::TRUE_KW}, {"false", TokenType::FALSE_KW}, {"int", TokenType::INT_KW}, {"uint", TokenType::UINT_KW}, {"str", TokenType::STR_KW}, {"bool", TokenType::BOOL_KW}, {"float", TokenType::FLOAT_KW}, {"map", TokenType::MAP_KW}, {"array", TokenType::ARRAY_KW}, {"void", TokenType::VOID_KW}, {"any", TokenType::ANY_KW}, {"input", TokenType::INPUT_KW}, {"print", TokenType::PRINT_KW}, {"break", TokenType::BREAK_KW}, {"continue", TokenType::CONTINUE_KW}, {"skip", TokenType::SKIP_KW}, {"switch", TokenType::SWITCH_KW}, {"case", TokenType::CASE_KW}, {"default", TokenType::DEFAULT_KW}, {"other", TokenType::OTHER_KW}, {"type", TokenType::TYPE_KW},
         /*{"id", TokenType::ID_KW},*/ {"uninit", TokenType::UNINIT_KW}, // id và type không còn là keyword
         {"is", TokenType::IS_KW},
         {"not", TokenType::NOT_KW},
@@ -134,6 +134,8 @@ namespace Linh
             return "BOOL_KW";
         case TokenType::CONST_KW:
             return "CONST_KW";
+        case TokenType::VAS_KW:
+            return "VAS_KW";
         case TokenType::ELSE_KW:
             return "ELSE_KW";
         case TokenType::FALSE_KW:
@@ -150,8 +152,6 @@ namespace Linh
             return "INPUT_KW";
         case TokenType::INT_KW:
             return "INT_KW";
-        case TokenType::LET_KW:
-            return "LET_KW";
         case TokenType::MAP_KW:
             return "MAP_KW";
         case TokenType::PRINT_KW:

@@ -78,7 +78,7 @@ namespace Linh
         IF_KW,
         INPUT_KW,
         INT_KW,
-        LET_KW,
+        VAS_KW, // Đổi thành VAS_KW
         MAP_KW,
         PRINT_KW,
         RETURN_KW,

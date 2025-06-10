@@ -95,7 +95,7 @@ namespace Linh
 
     AST::StmtPtr Parser::declaration()
     {
-        if (match({TokenType::VAR_KW, TokenType::LET_KW, TokenType::CONST_KW}))
+        if (match({TokenType::VAR_KW, TokenType::VAS_KW, TokenType::CONST_KW}))
         {
             return var_declaration(previous());
         }
@@ -153,7 +153,7 @@ namespace Linh
                     initializer_expr = std::make_unique<AST::UninitLiteralExpr>(uninit_val_token);
                 }
             }
-            else if (keyword_token.type == TokenType::LET_KW || keyword_token.type == TokenType::CONST_KW)
+            else if (keyword_token.type == TokenType::VAS_KW || keyword_token.type == TokenType::CONST_KW)
             {
                 if (declared_type_node_opt.has_value())
                 {
@@ -174,13 +174,13 @@ namespace Linh
             }
         }
 
-        if ((keyword_token.type == TokenType::LET_KW || keyword_token.type == TokenType::CONST_KW) &&
+        if ((keyword_token.type == TokenType::VAS_KW || keyword_token.type == TokenType::CONST_KW) &&
             !declared_type_node_opt.has_value() && initializer_expr)
         {
             if (AST::UninitLiteralExpr *uninit_init = dynamic_cast<AST::UninitLiteralExpr *>(initializer_expr.get()))
             {
                 Token error_token = uninit_init->keyword;
-                throw error(error_token, "Cannot infer fixed type for '" + keyword_token.lexeme + "' from 'uninit' value. Use 'var' or provide an explicit type (e.g., 'let myVar: some_type = uninit;').");
+                throw error(error_token, "Cannot infer fixed type for '" + keyword_token.lexeme + "' from 'uninit' value. Use 'var' or provide an explicit type (e.g., 'vas myVar: some_type = uninit;').");
             }
         }
 

@@ -74,7 +74,7 @@ namespace Linh
 
             // --- Bổ sung quản lý loại biến, kiểu biến, số lượng tham số hàm ---
             std::unordered_map<std::string, std::string> var_types;        // tên biến -> kiểu
-            std::unordered_map<std::string, std::string> var_kinds;        // tên biến -> "let"/"const"/"var"
+            std::unordered_map<std::string, std::string> var_kinds;        // tên biến -> "vas"/"const"/"var"
             std::unordered_map<std::string, size_t> function_param_counts; // tên hàm -> số lượng tham số
 
             // --- Bổ sung quản lý str_limit cho từng biến kiểu str<index> ---

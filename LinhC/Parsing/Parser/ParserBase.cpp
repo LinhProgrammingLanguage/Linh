@@ -185,7 +185,7 @@ namespace Linh
             {
             case TokenType::FUNC_KW:
             case TokenType::VAR_KW:
-            case TokenType::LET_KW:
+            case TokenType::VAS_KW: // THÊM DÒNG NÀY
             case TokenType::CONST_KW:
             case TokenType::FOR_KW:
             case TokenType::IF_KW:
