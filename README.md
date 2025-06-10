@@ -84,7 +84,7 @@ Contributions, bug reports, and ideas are welcome! Please open an issue or pull 
 
 - Website: [https://linh.kesug.com](https://linh.kesug.com)
 - Email: linhprogramminglanguage@gmail.com
-- Facebook: [Tinh Linh Programming Language](https://www.facebook.com/linhprogramminglanguage)
+- Facebook: [Tinh Linh Lang](https://www.facebook.com/people/Tinh-Linh-Lang/61576609030665/)
 - GitHub: [https://github.com/LinhProgrammingLanguage/Linh](https://github.com/LinhProgrammingLanguage/Linh)
 
 ---
