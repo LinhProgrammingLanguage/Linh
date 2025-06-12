@@ -101,8 +101,9 @@ namespace Linh
 
     bool Parser::check(TokenType type) const
     {
+        // Sửa: Nếu đã ở cuối file, chỉ trả về true nếu type là END_OF_FILE
         if (is_at_end())
-            return false;
+            return type == TokenType::END_OF_FILE;
         return peek().type == type;
     }
 

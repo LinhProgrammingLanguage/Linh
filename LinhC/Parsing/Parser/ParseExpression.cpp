@@ -376,9 +376,33 @@ namespace Linh
                     break;
                 AST::ExprPtr key_expr = expression();
                 Token colon_token = consume(TokenType::COLON, "Thiếu ':' giữa key và value trong map entry.");
-                AST::ExprPtr value_expr = expression();
-                entries.emplace_back(std::move(key_expr), colon_token, std::move(value_expr));
-            } while (match({TokenType::COMMA}));
+                // --- Sửa ở đây: nếu thiếu value thì tự động chèn UninitLiteralExpr ---
+                if (check(TokenType::COMMA) || check(TokenType::RBRACE))
+                {
+                    // Không báo lỗi, tự động chèn giá trị uninit
+                    Token uninit_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, colon_token.line, colon_token.column_start + 1);
+                    AST::ExprPtr value_expr = std::make_unique<AST::UninitLiteralExpr>(uninit_token);
+                    entries.emplace_back(std::move(key_expr), colon_token, std::move(value_expr));
+                }
+                else
+                {
+                    AST::ExprPtr value_expr = expression();
+                    entries.emplace_back(std::move(key_expr), colon_token, std::move(value_expr));
+                }
+                // Nếu có dấu phẩy, kiểm tra tiếp theo không phải là RBRACE (không cho phép trailing comma)
+                if (check(TokenType::COMMA))
+                {
+                    advance(); // consume comma
+                    if (check(TokenType::RBRACE))
+                    {
+                        throw error(peek(), "Trailing comma in map literal is not allowed.");
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            } while (true);
         }
 
         Token r_brace = consume(TokenType::RBRACE, "Thiếu '}' để kết thúc map literal.");

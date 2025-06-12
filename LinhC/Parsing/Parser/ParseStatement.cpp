@@ -406,7 +406,16 @@ namespace Linh
         // std::cout << "PARSER_EXPR_STMT: expression_statement() called. Peek: " << debug_token_info(peek()) << std::endl;
         AST::ExprPtr expr = expression();
         // std::cout << "PARSER_EXPR_STMT: Parsed expression. Consuming SEMICOLON. Peek: " << debug_token_info(peek()) << std::endl;
-        consume(TokenType::SEMICOLON, "Thiếu ';' sau biểu thức.");
+        // Sửa ở đây: Cho phép kết thúc statement bằng '}' mà không cần ';'
+        if (check(TokenType::SEMICOLON))
+        {
+            consume(TokenType::SEMICOLON, "Thiếu ';' sau biểu thức.");
+        }
+        else if (!check(TokenType::RBRACE))
+        {
+            // Nếu không phải là '}' thì mới báo lỗi thiếu ';'
+            throw error(peek(), "Thiếu ';' sau biểu thức.");
+        }
         // std::cout << "PARSER_EXPR_STMT: Returning ExpressionStmt." << std::endl;
         return std::make_unique<AST::ExpressionStmt>(std::move(expr));
     }
