@@ -43,6 +43,14 @@ target_include_directories(LinhSemanticLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+# --- LiVM VM ---
+add_library(LiVMLib STATIC
+    LiVM/LiVM.cpp
+)
+target_include_directories(LiVMLib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 # --- Định nghĩa file thực thi chính ---
 add_executable(LinhApp
     Main.cpp
@@ -59,6 +67,9 @@ target_link_libraries(LinhApp PRIVATE
     LinhASTLib
     LinhParserLib
     LinhSemanticLib
+    LiVMLib
+    boost_multiprecision
+    # Không cần utf8cpp vì chỉ là header-only, đã include ở trên
 )
 
 include(FetchContent)

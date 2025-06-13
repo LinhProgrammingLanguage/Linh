@@ -3,6 +3,7 @@
 #include "LinhC/Parsing/AST/ASTPrinter.hpp" // For printing AST
 #include "LinhC/Parsing/Semantic/SemanticAnalyzer.hpp"
 #include "LinhC/Bytecode/BytecodeEmitter.hpp"
+#include "LiVM/LiVM.hpp"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -118,6 +119,14 @@ int main(int argc, char **argv)
             std::cout << " " << (std::get<bool>(instr.operand) ? "true" : "false");
         std::cout << std::endl;
     }
+
+    // --- Run VM ---
+    std::cout << "\n--- Running LiVM ---" << std::endl;
+    Linh::LiVM vm;
+    vm.run(chunk);
+
+    // Debug: print VM stack and variables after execution (optional)
+    // (You can add methods to LiVM to expose stack/vars for debugging if needed)
 
     std::cout << "\nParse succeeded!" << std::endl;
     return 0;

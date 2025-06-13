@@ -76,11 +76,11 @@ namespace Linh
         FOR_KW,
         FUNC_KW,
         IF_KW,
-        INPUT_KW,
         INT_KW,
         VAS_KW, // Đổi thành VAS_KW
         MAP_KW,
         PRINT_KW,
+        INPUT_KW,
         RETURN_KW,
         STR_KW,
         TRUE_KW,

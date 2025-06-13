@@ -15,6 +15,7 @@ namespace Linh
         PUSH_STR,
         PUSH_BOOL,
         POP,
+        SWAP, // <--- Add this for unary minus
 
         // Arithmetic
         ADD,

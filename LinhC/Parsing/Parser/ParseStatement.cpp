@@ -141,34 +141,12 @@ namespace Linh
         }
         else if (peek().type == TokenType::VAR_KW || peek().type == TokenType::VAS_KW || peek().type == TokenType::CONST_KW)
         {
-            // Nếu là khai báo biến, var_declaration đã consume keyword và cả dấu ';' ở cuối của nó.
-            // Tuy nhiên, trong for-loop, var_declaration KHÔNG nên consume dấu ';'.
-            // Đây là một điểm khác biệt cần xử lý.
-            // Cách đơn giản là var_declaration không consume ';' và for_statement sẽ consume.
-            // HOẶC: for_statement gọi một phiên bản đặc biệt của var_declaration.
-            // Tạm thời, giả sử var_declaration luôn consume ';'. Điều này cần được xem lại.
-            // *** QUAN TRỌNG: Logic này cần được điều chỉnh ***
-            // Một cách xử lý: var_declaration có một tham số boolean `consume_semicolon`.
-            // For_statement sẽ truyền `false`. Các trường hợp khác truyền `true` (hoặc mặc định là true).
-            // Hiện tại, giữ như code gốc của bạn (var_declaration consume ';') và xem nó hoạt động thế nào.
-            // Nếu var_declaration đã consume ';', thì không cần consume lần nữa ở đây.
-            // Đây là một điểm dễ gây lỗi.
-
-            // Cách tiếp cận an toàn hơn:
-            // Để var_declaration không tự động consume ';'. Người gọi sẽ chịu trách nhiệm.
-            // Nhưng để giữ thay đổi tối thiểu, tạm thời giả sử var_declaration đã consume ';'.
-            // Trong trường hợp đó, logic này không hoàn toàn đúng cho for loop.
-            // -> Sửa lại: var_declaration sẽ không consume semicolon nữa.
-            //    Nó sẽ được consume bởi người gọi (expression_statement, for_statement).
-
-            // Với giả định var_declaration KHÔNG consume ';':
-            Token var_kw_token = advance();                   // Consume VAR/LET/CONST
-            initializer_stmt = var_declaration(var_kw_token); // var_declaration sẽ không consume ';'
-            consume(TokenType::SEMICOLON, "Thiếu ';' sau phần khởi tạo của for.");
+            // Parse as a full statement (which will consume its own semicolon)
+            initializer_stmt = declaration();
         }
         else
-        {                                              // Biểu thức khởi tạo
-            initializer_stmt = expression_statement(); // expression_statement đã consume ';'
+        { // Parse as an expression statement (which will consume its own semicolon)
+            initializer_stmt = expression_statement();
         }
 
         AST::ExprPtr condition_expr = nullptr;
@@ -177,7 +155,6 @@ namespace Linh
             condition_expr = expression();
         }
         consume(TokenType::SEMICOLON, "Thiếu ';' sau điều kiện for.");
-        // Nếu condition_expr vẫn là nullptr (tức là điều kiện rỗng), nó sẽ được coi là true.
         if (!condition_expr)
         {
             Token true_token(TokenType::TRUE_KW, "true", true, keyword_for.line, keyword_for.column_start);
@@ -204,28 +181,23 @@ namespace Linh
         if (increment_expr)
         {
             auto increment_as_stmt = std::make_unique<AST::ExpressionStmt>(std::move(increment_expr));
-            // Nếu body là một block, thêm increment vào cuối block đó.
-            // Nếu body là một câu lệnh đơn, tạo một block mới chứa body và increment.
             if (AST::BlockStmt *body_as_block = dynamic_cast<AST::BlockStmt *>(body_stmt.get()))
             {
                 body_as_block->statements.push_back(std::move(increment_as_stmt));
             }
             else
-            { // Body là câu lệnh đơn
+            {
                 AST::StmtList new_body_stmts;
-                new_body_stmts.push_back(std::move(body_stmt)); // Chuyển body cũ vào
+                new_body_stmts.push_back(std::move(body_stmt));
                 new_body_stmts.push_back(std::move(increment_as_stmt));
-                // Tạo một LBRACE giả cho BlockStmt mới
-                Token dummy_brace(TokenType::LBRACE, "{", std::monostate{}, keyword_for.line, keyword_for.column_start); // Vị trí có thể không chính xác lắm
+                Token dummy_brace(TokenType::LBRACE, "{", std::monostate{}, keyword_for.line, keyword_for.column_start);
                 body_stmt = std::make_unique<AST::BlockStmt>(std::move(new_body_stmts), dummy_brace);
             }
         }
 
-        // Tạo câu lệnh while
         Token dummy_while_kw(TokenType::WHILE_KW, "while", std::monostate{}, keyword_for.line, keyword_for.column_start);
         auto while_loop_stmt = std::make_unique<AST::WhileStmt>(dummy_while_kw, std::move(condition_expr), std::move(body_stmt));
 
-        // Nếu có initializer, bọc initializer và while_loop trong một block mới
         if (initializer_stmt)
         {
             AST::StmtList final_block_stmts;
@@ -235,7 +207,7 @@ namespace Linh
             return std::make_unique<AST::BlockStmt>(std::move(final_block_stmts), dummy_brace);
         }
         else
-        { // Không có initializer
+        {
             return while_loop_stmt;
         }
     }

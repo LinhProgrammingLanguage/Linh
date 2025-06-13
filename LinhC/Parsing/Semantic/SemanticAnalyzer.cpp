@@ -450,6 +450,12 @@ namespace Linh
         }
         std::any SemanticAnalyzer::visitIdentifierExpr(AST::IdentifierExpr *expr)
         {
+            // Cho phép dùng 'input' như một hàm built-in mà không cần khai báo
+            if (expr->name.lexeme == "input")
+            {
+                // Không kiểm tra biến/hàm cho 'input'
+                return {};
+            }
             // Kiểm tra biến đã khai báo chưa
             if (!is_var_declared(expr->name.lexeme))
             {
@@ -535,17 +541,21 @@ namespace Linh
             // Nếu callee là IdentifierExpr thì kiểm tra tên hàm
             if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->callee.get()))
             {
-                if (!is_function_declared(id->name.lexeme))
+                // Cho phép gọi hàm input mà không cần khai báo trước (giống Python)
+                if (id->name.lexeme != "input")
                 {
-                    errors.emplace_back("Function '" + id->name.lexeme + "' called but not declared.", id->name.line, id->name.column_start);
+                    if (!is_function_declared(id->name.lexeme))
+                    {
+                        errors.emplace_back("Function '" + id->name.lexeme + "' called but not declared.", id->name.line, id->name.column_start);
+                    }
                 }
                 // Nếu tên này là biến, cảnh báo dùng biến như hàm
                 if (is_var_declared(id->name.lexeme))
                 {
                     errors.emplace_back("Variable '" + id->name.lexeme + "' used as a function.", id->name.line, id->name.column_start);
                 }
-                // Kiểm tra số lượng tham số khi gọi hàm
-                if (function_param_counts.count(id->name.lexeme))
+                // Kiểm tra số lượng tham số khi gọi hàm (trừ input)
+                if (id->name.lexeme != "input" && function_param_counts.count(id->name.lexeme))
                 {
                     size_t expected = function_param_counts[id->name.lexeme];
                     size_t actual = expr->arguments.size();

@@ -1,13 +1,2 @@
-var g = {
-  "a": 3,
-  "b": 4,
-  "c": 5
-}
-var a = 0;
-vas b = 1;
-var c = 2;
-var v = {
-  "a": 3,
-  "b": 4,
-  "c": 5
-}
+var a = true;
+print(a);
