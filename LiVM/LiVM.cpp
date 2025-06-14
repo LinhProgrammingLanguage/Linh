@@ -210,6 +210,21 @@ namespace Linh
                            { std::cout << arg << std::endl; }, val);
                 break;
             }
+            case OpCode::INPUT:
+            {
+                auto prompt = pop();
+                std::string prompt_str;
+                if (std::holds_alternative<std::string>(prompt))
+                    prompt_str = std::get<std::string>(prompt);
+                else
+                    prompt_str = "";
+                if (!prompt_str.empty())
+                    std::cout << prompt_str;
+                std::string input_val;
+                std::getline(std::cin, input_val);
+                push(input_val);
+                break;
+            }
             case OpCode::HALT:
                 return;
             default:

@@ -9,33 +9,51 @@
 #include <sstream>
 #include <string> // For std::string
 
-int main(int argc, char **argv)
+void runSource(const std::string &source_code,
+               Linh::Semantic::SemanticAnalyzer *sema_ptr = nullptr,
+               Linh::BytecodeEmitter *emitter_ptr = nullptr,
+               Linh::LiVM *vm_ptr = nullptr);
+
+void runFile(const std::string &filename)
 {
-    std::string source_code;
-    std::ifstream file("test.li"); // Try to read from file test.li
-
-    if (file)
+    std::ifstream file(filename);
+    if (!file)
     {
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-        source_code = buffer.str();
-        file.close();
-        std::cout << "--- Loaded code from test.li ---" << std::endl;
+        std::cerr << "Could not open file: " << filename << std::endl;
+        return;
     }
-    else
+    std::string line, source;
+    while (std::getline(file, line))
     {
-        std::cerr << "Cannot open file test.li. Using minimal default code." << std::endl;
-        source_code = R"(
-        print("Hello from default Linh code!");
-        var x = 10;
-        if (x > 5) {
-            print("x is greater than 5");
-        } else {
-            print("x is not greater than 5");
-        }
-    )";
+        source += line + "\n";
     }
+    runSource(source);
+}
 
+void runREPL()
+{
+    std::string line;
+    std::cout << "Linh REPL. Type 'exit' to quit." << std::endl;
+    // --- Persist state across REPL lines ---
+    static Linh::Semantic::SemanticAnalyzer sema;
+    static Linh::BytecodeEmitter emitter;
+    static Linh::LiVM vm;
+    while (true)
+    {
+        std::cout << ">>> ";
+        if (!std::getline(std::cin, line))
+            break;
+        if (line == "exit")
+            break;
+        runSource(line, &sema, &emitter, &vm);
+    }
+}
+
+void runSource(const std::string &source_code,
+               Linh::Semantic::SemanticAnalyzer *sema_ptr,
+               Linh::BytecodeEmitter *emitter_ptr,
+               Linh::LiVM *vm_ptr)
+{
     std::cout << "--- Source Code Being Parsed ---\n"
               << source_code << "\n--------------------------------\n";
 
@@ -56,7 +74,7 @@ int main(int argc, char **argv)
     if (lexer_has_error)
     {
         std::cerr << "\nLexer error, aborting parse." << std::endl;
-        return 1;
+        return;
     }
 
     std::cout << "\n--- Abstract Syntax Tree (AST) ---" << std::endl;
@@ -80,31 +98,41 @@ int main(int argc, char **argv)
     }
 
     // --- Semantic Analysis ---
-    Linh::Semantic::SemanticAnalyzer sema;
-    sema.analyze(ast_statements);
-    if (!sema.errors.empty())
+    Linh::Semantic::SemanticAnalyzer *sema;
+    if (sema_ptr)
+        sema = sema_ptr;
+    else
+        sema = new Linh::Semantic::SemanticAnalyzer();
+    // --- Only reset state if not in REPL ---
+    bool reset_state = (sema_ptr == nullptr);
+    sema->analyze(ast_statements, reset_state);
+    if (!sema->errors.empty())
     {
         std::cerr << "\nSemantic errors:\n";
-        for (const auto &err : sema.errors)
+        for (const auto &err : sema->errors)
         {
             std::cerr << "[Line " << err.line << ", Col " << err.column << "] " << err.message << std::endl;
         }
         std::cout << "\nSemantic analysis failed due to errors." << std::endl;
-        return 1;
+        if (!sema_ptr)
+            delete sema;
+        return;
     }
 
     if (parser.had_error())
     {
         std::cout << "\nParse failed due to parser errors." << std::endl;
-        return 1;
+        return;
     }
 
     // --- Bytecode ---
-    Linh::BytecodeEmitter emitter;
-    emitter.emit(ast_statements);
-
-    // In kết quả bytecode (demo)
-    const auto &chunk = emitter.get_chunk();
+    Linh::BytecodeEmitter *emitter;
+    if (emitter_ptr)
+        emitter = emitter_ptr;
+    else
+        emitter = new Linh::BytecodeEmitter();
+    emitter->emit(ast_statements);
+    const auto &chunk = emitter->get_chunk();
     for (const auto &instr : chunk)
     {
         std::cout << "Op: " << static_cast<int>(instr.opcode);
@@ -121,13 +149,40 @@ int main(int argc, char **argv)
     }
 
     // --- Run VM ---
-    std::cout << "\n--- Running LiVM ---" << std::endl;
-    Linh::LiVM vm;
-    vm.run(chunk);
+    Linh::LiVM *vm;
+    if (vm_ptr)
+        vm = vm_ptr;
+    else
+        vm = new Linh::LiVM();
+    vm->run(chunk);
 
     // Debug: print VM stack and variables after execution (optional)
     // (You can add methods to LiVM to expose stack/vars for debugging if needed)
 
     std::cout << "\nParse succeeded!" << std::endl;
+    if (!sema_ptr)
+        delete sema;
+    if (!emitter_ptr)
+        delete emitter;
+    if (!vm_ptr)
+        delete vm;
+}
+
+void runSource(const std::string &source_code)
+{
+    runSource(source_code, nullptr, nullptr, nullptr);
+}
+
+int main(int argc, char **argv)
+{
+    if (argc > 1)
+    {
+        runFile(argv[1]);
+    }
+    else
+    {
+        runREPL();
+    }
+
     return 0;
 }

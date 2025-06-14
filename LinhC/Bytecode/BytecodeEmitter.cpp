@@ -6,6 +6,7 @@ namespace Linh
 
     void BytecodeEmitter::emit(const AST::StmtList &stmts)
     {
+        chunk.clear(); // Đảm bảo chunk chỉ chứa bytecode của dòng hiện tại, nhưng giữ lại var_table và next_var_index
         for (const auto &stmt : stmts)
         {
             if (stmt)
@@ -210,7 +211,25 @@ namespace Linh
 
     std::any BytecodeEmitter::visitCallExpr(AST::CallExpr *expr)
     {
-        // Not implemented yet
+        // Special case: input(...)
+        if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->callee.get()))
+        {
+            if (id->name.lexeme == "input")
+            {
+                // Only support input with 0 or 1 argument (prompt)
+                if (!expr->arguments.empty())
+                {
+                    expr->arguments[0]->accept(this); // push prompt string
+                }
+                else
+                {
+                    emit_instr(OpCode::PUSH_STR, std::string("")); // empty prompt
+                }
+                emit_instr(OpCode::INPUT);
+                return {};
+            }
+        }
+        // Not implemented yet for other calls
         return {};
     }
 

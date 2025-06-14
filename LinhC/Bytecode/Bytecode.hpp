@@ -52,6 +52,7 @@ namespace Linh
 
         // Special
         PRINT,
+        INPUT, // <--- Add this for input
         HALT
     };
 

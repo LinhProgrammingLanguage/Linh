@@ -25,7 +25,7 @@ namespace Linh
         public:
             std::vector<SemanticError> errors;
 
-            void analyze(const AST::StmtList &stmts);
+            void analyze(const AST::StmtList &stmts, bool reset_state = true);
 
             // StmtVisitor overrides
             void visitExpressionStmt(AST::ExpressionStmt *stmt) override;

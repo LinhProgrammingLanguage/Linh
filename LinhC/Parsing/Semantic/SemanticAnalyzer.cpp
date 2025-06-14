@@ -6,17 +6,32 @@ namespace Linh
     namespace Semantic
     {
 
-        void SemanticAnalyzer::analyze(const AST::StmtList &stmts)
+        void SemanticAnalyzer::analyze(const AST::StmtList &stmts, bool reset_state)
         {
-            var_scopes.clear();
-            global_functions.clear();
-            begin_scope();
-            for (const auto &stmt : stmts)
+            if (reset_state)
             {
-                if (stmt)
-                    stmt->accept(this);
+                var_scopes.clear();
+                global_functions.clear();
+                begin_scope();
+                for (const auto &stmt : stmts)
+                {
+                    if (stmt)
+                        stmt->accept(this);
+                }
+                end_scope();
             }
-            end_scope();
+            else
+            {
+                // REPL mode: giữ lại scope toàn cục, không pop/push scope
+                if (var_scopes.empty()) {
+                    begin_scope(); // Đảm bảo luôn có scope ngoài cùng
+                }
+                for (const auto &stmt : stmts)
+                {
+                    if (stmt)
+                        stmt->accept(this);
+                }
+            }
         }
 
         void SemanticAnalyzer::begin_scope()
