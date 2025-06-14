@@ -196,10 +196,55 @@ namespace Linh
         emit_instr(OpCode::STORE_VAR, idx);
     }
 
-    void BytecodeEmitter::visitBlockStmt(AST::BlockStmt *) {}
+    void BytecodeEmitter::visitBlockStmt(AST::BlockStmt *stmt)
+    {
+        for (const auto &s : stmt->statements)
+        {
+            if (s)
+                s->accept(this);
+        }
+    }
+
     void BytecodeEmitter::visitIfStmt(AST::IfStmt *) {}
-    void BytecodeEmitter::visitWhileStmt(AST::WhileStmt *) {}
-    void BytecodeEmitter::visitDoWhileStmt(AST::DoWhileStmt *) {}
+    void BytecodeEmitter::visitWhileStmt(AST::WhileStmt *stmt)
+    {
+        // while (cond) body
+        // [cond]
+        // JMP_IF_FALSE end
+        // [body]
+        // JMP cond
+        // end:
+
+        size_t cond_pos = chunk.size();
+        if (stmt->condition)
+            stmt->condition->accept(this);
+
+        // Đặt chỗ cho JMP_IF_FALSE, sẽ sửa sau
+        size_t jmp_if_false_pos = chunk.size();
+        emit_instr(OpCode::JMP_IF_FALSE, int64_t(-1)); // placeholder
+
+        if (stmt->body)
+            stmt->body->accept(this);
+
+        // Quay lại đầu vòng lặp
+        emit_instr(OpCode::JMP, int64_t(cond_pos));
+
+        // Sửa lại JMP_IF_FALSE để nhảy ra khỏi vòng lặp
+        size_t end_pos = chunk.size();
+        chunk[jmp_if_false_pos].operand = int64_t(end_pos);
+    }
+
+    void BytecodeEmitter::visitDoWhileStmt(AST::DoWhileStmt *stmt)
+    {
+        // do { body } while (cond);
+        size_t loop_start = chunk.size();
+        if (stmt->body)
+            stmt->body->accept(this);
+        if (stmt->condition)
+            stmt->condition->accept(this);
+        emit_instr(OpCode::JMP_IF_TRUE, int64_t(loop_start));
+    }
+
     void BytecodeEmitter::visitFunctionDeclStmt(AST::FunctionDeclStmt *) {}
     void BytecodeEmitter::visitReturnStmt(AST::ReturnStmt *) {}
     void BytecodeEmitter::visitBreakStmt(AST::BreakStmt *) {}
@@ -228,6 +273,21 @@ namespace Linh
                 emit_instr(OpCode::INPUT);
                 return {};
             }
+            // Special case: type(...)
+            if (id->name.lexeme == "type")
+            {
+                // Chỉ hỗ trợ 1 đối số: type(a)
+                if (!expr->arguments.empty())
+                {
+                    expr->arguments[0]->accept(this); // push biến/giá trị
+                }
+                else
+                {
+                    emit_instr(OpCode::PUSH_STR, std::string(""));
+                }
+                emit_instr(OpCode::TYPEOF);
+                return {};
+            }
         }
         // Not implemented yet for other calls
         return {};
@@ -235,7 +295,24 @@ namespace Linh
 
     std::any BytecodeEmitter::visitPostfixExpr(AST::PostfixExpr *expr)
     {
-        // Not implemented yet
+        // Hỗ trợ a++ và a--
+        // Chỉ hỗ trợ cho IdentifierExpr
+        auto id = dynamic_cast<AST::IdentifierExpr *>(expr->operand.get());
+        if (!id)
+            return {};
+        int idx = get_var_index(id->name.lexeme);
+        // LOAD_VAR idx
+        emit_instr(OpCode::LOAD_VAR, idx);
+        // PUSH_INT 1
+        emit_instr(OpCode::PUSH_INT, 1);
+        if (expr->op_token.type == TokenType::PLUS_PLUS)
+            emit_instr(OpCode::ADD);
+        else if (expr->op_token.type == TokenType::MINUS_MINUS)
+            emit_instr(OpCode::SUB);
+        // STORE_VAR idx
+        emit_instr(OpCode::STORE_VAR, idx);
+        // Optionally, load value back (for expression value)
+        emit_instr(OpCode::LOAD_VAR, idx);
         return {};
     }
 

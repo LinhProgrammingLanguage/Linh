@@ -31,7 +31,7 @@ std::string sao_tin_develop_team_email = "saotindev@gmail.com";
 int number_bit_min = 8;
 int number_bit_default = 64;
 int number_bit_max = 128;
-std::array<int, 5> number_bit_options = {8, 16, 32, 64, 128};
+constexpr std::array<int, 5> number_bit_options = {8, 16, 32, 64, 128};
 /* default utf*/
 std::string default_utf = "utf-8";
 /* sp os */

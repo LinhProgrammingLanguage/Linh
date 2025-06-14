@@ -52,7 +52,8 @@ namespace Linh
 
         // Special
         PRINT,
-        INPUT, // <--- Add this for input
+        INPUT,  // <--- Add this for input
+        TYPEOF, // <--- Thêm dòng này
         HALT
     };
 

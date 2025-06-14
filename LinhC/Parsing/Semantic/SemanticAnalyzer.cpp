@@ -23,7 +23,8 @@ namespace Linh
             else
             {
                 // REPL mode: giữ lại scope toàn cục, không pop/push scope
-                if (var_scopes.empty()) {
+                if (var_scopes.empty())
+                {
                     begin_scope(); // Đảm bảo luôn có scope ngoài cùng
                 }
                 for (const auto &stmt : stmts)
@@ -466,20 +467,21 @@ namespace Linh
         std::any SemanticAnalyzer::visitIdentifierExpr(AST::IdentifierExpr *expr)
         {
             // Cho phép dùng 'input' như một hàm built-in mà không cần khai báo
-            if (expr->name.lexeme == "input")
+            if (expr->name.lexeme == "input" || expr->name.lexeme == "type")
             {
-                // Không kiểm tra biến/hàm cho 'input'
+                // Không kiểm tra biến/hàm cho 'input' hoặc 'type'
+                return {};
+            }
+            // Ưu tiên kiểm tra hàm trước biến
+            if (is_function_declared(expr->name.lexeme))
+            {
+                // Nếu là tên hàm, không báo lỗi dùng như biến (cho phép dùng tên hàm như giá trị hàm)
                 return {};
             }
             // Kiểm tra biến đã khai báo chưa
             if (!is_var_declared(expr->name.lexeme))
             {
                 errors.emplace_back("Variable '" + expr->name.lexeme + "' used before declaration.", expr->name.line, expr->name.column_start);
-            }
-            // Nếu tên này là tên hàm, cảnh báo dùng hàm như biến
-            if (is_function_declared(expr->name.lexeme))
-            {
-                errors.emplace_back("Function '" + expr->name.lexeme + "' used as a variable.", expr->name.line, expr->name.column_start);
             }
             return {};
         }
@@ -556,21 +558,17 @@ namespace Linh
             // Nếu callee là IdentifierExpr thì kiểm tra tên hàm
             if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->callee.get()))
             {
-                // Cho phép gọi hàm input mà không cần khai báo trước (giống Python)
-                if (id->name.lexeme != "input")
+                // Cho phép gọi hàm input hoặc type mà không cần khai báo trước (giống Python)
+                if (id->name.lexeme != "input" && id->name.lexeme != "type")
                 {
                     if (!is_function_declared(id->name.lexeme))
                     {
                         errors.emplace_back("Function '" + id->name.lexeme + "' called but not declared.", id->name.line, id->name.column_start);
                     }
                 }
-                // Nếu tên này là biến, cảnh báo dùng biến như hàm
-                if (is_var_declared(id->name.lexeme))
-                {
-                    errors.emplace_back("Variable '" + id->name.lexeme + "' used as a function.", id->name.line, id->name.column_start);
-                }
-                // Kiểm tra số lượng tham số khi gọi hàm (trừ input)
-                if (id->name.lexeme != "input" && function_param_counts.count(id->name.lexeme))
+                // Không cần báo lỗi nếu tên này là biến (vì có thể shadow hoặc cho phép tên biến trùng tên hàm)
+                // Kiểm tra số lượng tham số khi gọi hàm (trừ input, type)
+                if (id->name.lexeme != "input" && id->name.lexeme != "type" && function_param_counts.count(id->name.lexeme))
                 {
                     size_t expected = function_param_counts[id->name.lexeme];
                     size_t actual = expr->arguments.size();

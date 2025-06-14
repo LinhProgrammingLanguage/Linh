@@ -303,6 +303,14 @@ namespace Linh
             return std::make_unique<AST::LiteralExpr>(previous().literal);
         }
 
+        // --- Sửa tại đây: cho phép type(...) là biểu thức ---
+        if (match({TokenType::TYPE_KW}))
+        {
+            // Đối xử như một identifier để cho phép type(a) là CallExpr("type", ...)
+            Token type_token = previous();
+            return std::make_unique<AST::IdentifierExpr>(type_token);
+        }
+
         if (match({TokenType::IDENTIFIER}))
         {
             return std::make_unique<AST::IdentifierExpr>(previous());

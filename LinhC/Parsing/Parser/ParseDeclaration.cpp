@@ -225,6 +225,11 @@ namespace Linh
                 {
                     error(peek(), "Cannot have more than 255 parameters.");
                 }
+                // --- Sửa tại đây: cho phép var/vas/const trước tên tham số ---
+                if (match({TokenType::VAR_KW, TokenType::VAS_KW, TokenType::CONST_KW}))
+                {
+                    // bỏ qua token này, không lưu lại
+                }
                 Token param_name_token = consume(TokenType::IDENTIFIER, "Missing parameter name.");
                 std::optional<AST::TypeNodePtr> param_type_node = std::nullopt;
                 if (match({TokenType::COLON}))

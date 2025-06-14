@@ -46,6 +46,10 @@ target_include_directories(LinhSemanticLib PUBLIC
 # --- LiVM VM ---
 add_library(LiVMLib STATIC
     LiVM/LiVM.cpp
+    LiVM/iostream/iostream.cpp # Thêm dòng này để build iostream
+    LiVM/type.cpp
+    LiVM/Loop.cpp
+    LiVM/Function.cpp
 )
 target_include_directories(LiVMLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -89,19 +93,6 @@ CPMAddPackage(
 if(boost_multiprecision_ADDED)
     message(STATUS "Boost.Multiprecision added via CPM")
 endif()
-
-# --- CPM: utf8-cpp ---
-CPMAddPackage(
-  NAME utf8cpp
-  GITHUB_REPOSITORY nemtrif/utfcpp
-  GIT_TAG v3.2.1
-  DOWNLOAD_ONLY ON
-)
-if(utf8cpp_ADDED)
-    message(STATUS "utf8-cpp added via CPM (download only)")
-endif()
-
-target_include_directories(LinhApp PRIVATE ${utf8cpp_SOURCE_DIR}/source)
 
 target_link_libraries(LinhApp PRIVATE
     LinhLexerLib
