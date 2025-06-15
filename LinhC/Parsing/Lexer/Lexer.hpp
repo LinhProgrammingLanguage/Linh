@@ -99,6 +99,8 @@ namespace Linh
         TYPE_KW,
         ID_KW,
         UNINIT_KW,
+        IMPORT_KW, // Đảm bảo dòng này nằm ở đây, đúng thứ tự với bảng từ khóa
+        FROM_KW,   // Đảm bảo dòng này nằm ở đây, đúng thứ tự với bảng từ khóa
 
         // New keywords from previous steps
         IS_KW,     // is

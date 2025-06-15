@@ -72,6 +72,8 @@ namespace Linh
     // --- ExprVisitor ---
     std::any BytecodeEmitter::visitLiteralExpr(AST::LiteralExpr *expr)
     {
+        // int<8>, int<16>, int<32>, int<64>, uint<8>, ... đều là int64_t ở runtime
+        // float<32>, float<64> đều là double ở runtime
         if (std::holds_alternative<int64_t>(expr->value))
             emit_instr(OpCode::PUSH_INT, std::get<int64_t>(expr->value));
         else if (std::holds_alternative<double>(expr->value))
@@ -396,5 +398,10 @@ namespace Linh
     {
         // Not implemented yet
         return {};
+    }
+
+    void BytecodeEmitter::visitImportStmt(AST::ImportStmt * /*stmt*/)
+    {
+        // Không sinh bytecode cho import (hoặc xử lý import module ở đây nếu cần)
     }
 }

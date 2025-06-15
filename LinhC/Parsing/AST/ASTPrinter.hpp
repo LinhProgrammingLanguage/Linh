@@ -53,6 +53,7 @@ namespace Linh
             void visitDeleteStmt(DeleteStmt *stmt) override;
             void visitThrowStmt(ThrowStmt *stmt) override;
             void visitTryStmt(TryStmt *stmt) override;
+            void visitImportStmt(ImportStmt *stmt) override; // <--- Thêm dòng này
 
             // TypeVisitor implementations
             std::string visitBaseTypeNode(BaseTypeNode *type_node) override;

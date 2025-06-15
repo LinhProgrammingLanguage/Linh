@@ -21,7 +21,9 @@ namespace Linh
         {"throw", TokenType::THROW_KW},
         {"try", TokenType::TRY_KW},
         {"catch", TokenType::CATCH_KW},
-        {"finally", TokenType::FINALLY_KW}
+        {"finally", TokenType::FINALLY_KW},
+        {"import", TokenType::IMPORT_KW}, // <--- Ensure this is present
+        {"from", TokenType::FROM_KW}      // <--- Ensure this is present
         // {"class", TokenType::CLASS_KW}, // Bỏ comment nếu CLASS_KW được giữ trong TokenType
     };
 
@@ -216,6 +218,10 @@ namespace Linh
             return "CATCH_KW";
         case TokenType::FINALLY_KW:
             return "FINALLY_KW";
+        case TokenType::IMPORT_KW:
+            return "IMPORT_KW";
+        case TokenType::FROM_KW:
+            return "FROM_KW";
         // case TokenType::CLASS_KW: return "CLASS_KW";
         case TokenType::ERROR:
             return "ERROR";

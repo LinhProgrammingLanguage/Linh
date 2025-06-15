@@ -492,19 +492,53 @@ namespace Linh
             m_builder << ")\n";
         }
 
+        void ASTPrinter::visitImportStmt(ImportStmt *stmt)
+        {
+            indent();
+            if (!stmt->names.empty())
+            {
+                m_builder << "(ImportStmt kw:" << stmt->import_kw.lexeme << " names:[";
+                for (size_t i = 0; i < stmt->names.size(); ++i)
+                {
+                    m_builder << stmt->names[i].lexeme;
+                    if (i + 1 < stmt->names.size())
+                        m_builder << ", ";
+                }
+                m_builder << "]";
+                if (stmt->from_kw.type == TokenType::FROM_KW)
+                    m_builder << " from:" << stmt->from_kw.lexeme << " module:" << stmt->module_name.lexeme;
+                m_builder << ")\n";
+            }
+            else
+            {
+                m_builder << "(ImportModule kw:" << stmt->import_kw.lexeme << " module:" << stmt->module_name.lexeme << ")\n";
+            }
+        }
+
         // --- TypeVisitor implementations ---
         std::string ASTPrinter::visitBaseTypeNode(BaseTypeNode *type_node)
         {
+            // Hiển thị str<index> nếu có
+            if (type_node->type_keyword_token.type == TokenType::STR_KW && type_node->template_arg.has_value())
+                return type_node->type_keyword_token.lexeme + "<" + std::to_string(type_node->template_arg.value()) + ">";
+            // Hiển thị int/uint/float<bit> nếu có
+            if ((type_node->type_keyword_token.type == TokenType::INT_KW ||
+                 type_node->type_keyword_token.type == TokenType::UINT_KW ||
+                 type_node->type_keyword_token.type == TokenType::FLOAT_KW) &&
+                type_node->template_arg.has_value())
+                return type_node->type_keyword_token.lexeme + "<" + std::to_string(type_node->template_arg.value()) + ">";
             return type_node->type_keyword_token.lexeme;
         }
 
         std::string ASTPrinter::visitSizedIntegerTypeNode(SizedIntegerTypeNode *type_node)
         {
+            // int<bit> hoặc uint<bit>
             return type_node->base_type_keyword_token.lexeme + "<" + type_node->size_token.lexeme + ">";
         }
 
         std::string ASTPrinter::visitSizedFloatTypeNode(SizedFloatTypeNode *type_node)
         {
+            // float<bit>
             return type_node->base_type_keyword_token.lexeme + "<" + type_node->size_token.lexeme + ">";
         }
 

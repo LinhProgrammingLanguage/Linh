@@ -299,6 +299,7 @@ namespace Linh
         struct DeleteStmt;
         struct ThrowStmt;
         struct TryStmt;
+        struct ImportStmt; // <--- Thêm dòng này
 
         class StmtVisitor
         {
@@ -319,6 +320,7 @@ namespace Linh
             virtual void visitDeleteStmt(DeleteStmt *stmt) = 0;
             virtual void visitThrowStmt(ThrowStmt *stmt) = 0;
             virtual void visitTryStmt(TryStmt *stmt) = 0;
+            virtual void visitImportStmt(ImportStmt *stmt) = 0; // <--- Thêm dòng này
         };
         struct Stmt
         {
@@ -498,6 +500,18 @@ namespace Linh
             std::optional<Token> keyword_finally;
             TryStmt(Token kw_try, std::unique_ptr<BlockStmt> try_b, std::vector<CatchClauseNode> catches, std::optional<std::unique_ptr<BlockStmt>> finally_b = std::nullopt, std::optional<Token> kw_finally_opt = std::nullopt) : keyword_try(std::move(kw_try)), try_block(std::move(try_b)), catch_clauses(std::move(catches)), finally_block(std::move(finally_b)), keyword_finally(kw_finally_opt) {}
             void accept(StmtVisitor *visitor) override { visitor->visitTryStmt(this); }
+        };
+        struct ImportStmt : Stmt // <--- Thêm node mới
+        {
+            Token import_kw;
+            std::vector<Token> names; // rỗng nếu chỉ import module
+            Token from_kw;            // type == FROM_KW nếu có, else type == END_OF_FILE
+            Token module_name;
+            Token semicolon;
+            ImportStmt(Token import_kw, std::vector<Token> names, Token from_kw, Token module_name, Token semicolon)
+                : import_kw(std::move(import_kw)), names(std::move(names)), from_kw(std::move(from_kw)), module_name(std::move(module_name)), semicolon(std::move(semicolon)) {}
+            // Đơn giản hóa: names rỗng và from_kw.type == END_OF_FILE nếu chỉ import module
+            void accept(StmtVisitor *visitor) override { visitor->visitImportStmt(this); }
         };
 
     } // namespace AST

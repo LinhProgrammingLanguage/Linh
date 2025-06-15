@@ -1,4 +1,0 @@
-func add(var a: int, var b: int){
-    print(a + b);
-}
-add(5, 10);

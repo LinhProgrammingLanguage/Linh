@@ -60,9 +60,13 @@ namespace Linh
             switch (instr.opcode)
             {
             case OpCode::PUSH_INT:
+                // If you want to support int128, check here
+                // For now, always push int64_t
                 push(std::get<int64_t>(instr.operand));
                 break;
             case OpCode::PUSH_FLOAT:
+                // If you want to support float128, check here
+                // For now, always push double
                 push(std::get<double>(instr.operand));
                 break;
             case OpCode::PUSH_STR:
@@ -90,10 +94,12 @@ namespace Linh
             {
                 auto b = pop();
                 auto a = pop();
+                // --- Support int128/float128 if needed ---
                 if (std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b))
                 {
                     int64_t av = std::get<int64_t>(a);
                     int64_t bv = std::get<int64_t>(b);
+                    // If you want to support int128, check here (not enough info in current design)
                     switch (instr.opcode)
                     {
                     case OpCode::ADD:
@@ -115,11 +121,13 @@ namespace Linh
                         break;
                     }
                 }
+                // Support float128 if needed
                 else if ((std::holds_alternative<int64_t>(a) || std::holds_alternative<double>(a)) &&
                          (std::holds_alternative<int64_t>(b) || std::holds_alternative<double>(b)))
                 {
                     double av = std::holds_alternative<int64_t>(a) ? static_cast<double>(std::get<int64_t>(a)) : std::get<double>(a);
                     double bv = std::holds_alternative<int64_t>(b) ? static_cast<double>(std::get<int64_t>(b)) : std::get<double>(b);
+                    // If you want to support float128, check here (not enough info in current design)
                     switch (instr.opcode)
                     {
                     case OpCode::ADD:
@@ -141,6 +149,9 @@ namespace Linh
                         break;
                     }
                 }
+                // --- Support int128/float128 using boost if needed ---
+                // else if (std::holds_alternative<int128_t>(a) && std::holds_alternative<int128_t>(b)) { ... }
+                // else if (std::holds_alternative<float128_t>(a) && std::holds_alternative<float128_t>(b)) { ... }
                 else
                 {
                     std::cerr << "VM: ADD/SUB/MUL/DIV/MOD only supports int/float" << std::endl;
@@ -386,6 +397,9 @@ namespace Linh
                                 break;
                             }
                         }
+                        // --- Support int128/float128 using boost if needed ---
+                        // else if (std::holds_alternative<int128_t>(a) && std::holds_alternative<int128_t>(b)) { ... }
+                        // else if (std::holds_alternative<float128_t>(a) && std::holds_alternative<float128_t>(b)) { ... }
                         else
                         {
                             std::cerr << "VM: ADD/SUB/MUL/DIV/MOD only supports int/float" << std::endl;
@@ -540,6 +554,26 @@ namespace Linh
             }
             ++ip;
         }
+    }
+
+    void LiVM::type()
+    {
+        if (stack.empty())
+        {
+            std::cout << "stack_empty" << std::endl;
+            return;
+        }
+        const auto &val = stack.back();
+        if (std::holds_alternative<int64_t>(val))
+            std::cout << "int" << std::endl;
+        else if (std::holds_alternative<double>(val))
+            std::cout << "float" << std::endl;
+        else if (std::holds_alternative<std::string>(val))
+            std::cout << "str" << std::endl;
+        else if (std::holds_alternative<bool>(val))
+            std::cout << "bool" << std::endl;
+        else
+            std::cout << "unknown" << std::endl;
     }
 
 } // namespace Linh

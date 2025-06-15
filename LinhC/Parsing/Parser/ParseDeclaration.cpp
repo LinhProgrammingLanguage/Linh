@@ -103,6 +103,10 @@ namespace Linh
         {
             return function_declaration(previous());
         }
+        if (match({TokenType::IMPORT_KW})) // <--- Thêm dòng này
+        {
+            return import_statement();
+        }
         return statement();
     }
 
@@ -275,6 +279,84 @@ namespace Linh
             std::move(parameters_list),
             std::move(return_type_node),
             std::move(body_block_ptr));
+    }
+
+    AST::StmtPtr Parser::import_statement()
+    {
+        Token import_kw = previous(); // IMPORT_KW
+        std::vector<Token> names;
+        Token from_kw(TokenType::END_OF_FILE, "", std::monostate{}, import_kw.line, import_kw.column_start); // default
+        Token module_name(TokenType::END_OF_FILE, "", std::monostate{}, import_kw.line, import_kw.column_start);
+        Token semicolon(TokenType::END_OF_FILE, "", std::monostate{}, import_kw.line, import_kw.column_start);
+
+        // Nếu tiếp theo là IDENTIFIER, có thể là import name1, name2 from module; hoặc import module;
+        if (check(TokenType::IDENTIFIER))
+        {
+            Token first = advance();
+            if (check(TokenType::COMMA))
+            {
+                // import name1, name2, ... from module;
+                names.push_back(first);
+                while (match({TokenType::COMMA}))
+                {
+                    Token name_token = consume(TokenType::IDENTIFIER, "Missing name in import statement.");
+                    names.push_back(name_token);
+                }
+                from_kw = consume(TokenType::FROM_KW, "Missing 'from' in import statement.");
+                // Parse module name (IDENTIFIER (DOT IDENTIFIER)*)
+                Token mod_first = consume(TokenType::IDENTIFIER, "Missing module name in import statement.");
+                std::string mod_name = mod_first.lexeme;
+                while (check(TokenType::DOT))
+                {
+                    advance(); // consume DOT
+                    Token next_part = consume(TokenType::IDENTIFIER, "Expected identifier after '.' in module name.");
+                    mod_name += "." + next_part.lexeme;
+                }
+                module_name = Token(TokenType::IDENTIFIER, mod_name, std::monostate{}, mod_first.line, mod_first.column_start);
+                semicolon = consume(TokenType::SEMICOLON, "Missing ';' after import statement.");
+            }
+            else if (check(TokenType::FROM_KW))
+            {
+                // import name from module;
+                names.push_back(first);
+                from_kw = consume(TokenType::FROM_KW, "Missing 'from' in import statement.");
+                // Parse module name (IDENTIFIER (DOT IDENTIFIER)*)
+                Token mod_first = consume(TokenType::IDENTIFIER, "Missing module name in import statement.");
+                std::string mod_name = mod_first.lexeme;
+                while (check(TokenType::DOT))
+                {
+                    advance(); // consume DOT
+                    Token next_part = consume(TokenType::IDENTIFIER, "Expected identifier after '.' in module name.");
+                    mod_name += "." + next_part.lexeme;
+                }
+                module_name = Token(TokenType::IDENTIFIER, mod_name, std::monostate{}, mod_first.line, mod_first.column_start);
+                semicolon = consume(TokenType::SEMICOLON, "Missing ';' after import statement.");
+            }
+            else if (check(TokenType::DOT) || check(TokenType::SEMICOLON))
+            {
+                // import module; hoặc import module.with.dots;
+                std::string mod_name = first.lexeme;
+                int mod_line = first.line;
+                int mod_col = first.column_start;
+                while (check(TokenType::DOT))
+                {
+                    advance(); // consume DOT
+                    Token next_part = consume(TokenType::IDENTIFIER, "Expected identifier after '.' in module name.");
+                    mod_name += "." + next_part.lexeme;
+                }
+                module_name = Token(TokenType::IDENTIFIER, mod_name, std::monostate{}, mod_line, mod_col);
+                semicolon = consume(TokenType::SEMICOLON, "Missing ';' after import statement.");
+            }
+            else
+            {
+                throw error(peek(), "Invalid import statement syntax.");
+            }
+        }
+        else
+        {
+            throw error(peek(), "Missing module name or import names in import statement.");
+        }
+        return std::make_unique<AST::ImportStmt>(import_kw, std::move(names), from_kw, module_name, semicolon);
     }
 
 } // namespace Linh

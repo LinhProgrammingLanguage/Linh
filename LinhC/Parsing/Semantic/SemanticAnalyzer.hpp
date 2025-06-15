@@ -43,6 +43,7 @@ namespace Linh
             void visitDeleteStmt(AST::DeleteStmt *stmt) override;
             void visitThrowStmt(AST::ThrowStmt *stmt) override;
             void visitTryStmt(AST::TryStmt *stmt) override;
+            void visitImportStmt(AST::ImportStmt *stmt) override;
 
             // ExprVisitor overrides (only need UninitLiteralExpr for this rule)
             std::any visitBinaryExpr(AST::BinaryExpr *expr) override;

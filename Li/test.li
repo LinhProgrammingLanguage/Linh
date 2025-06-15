@@ -1,0 +1,5 @@
+import add.li;
+// Compare this snippet from Li/test.li:
+print("Testing add function from add.li");
+print(add(1, 2)); // Should print 3
+print(add(2, 3)); // Should print 5

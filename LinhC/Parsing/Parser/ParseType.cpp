@@ -68,10 +68,12 @@ namespace Linh
 
                 if (base_keyword_token.type == TokenType::FLOAT_KW)
                 {
+                    // float<32>, float<64>
                     return std::make_unique<AST::SizedFloatTypeNode>(base_keyword_token, size_val_token);
                 }
                 else
                 { // INT_KW hoặc UINT_KW
+                    // int<8>, int<16>, int<32>, int<64>, uint<8>, ...
                     return std::make_unique<AST::SizedIntegerTypeNode>(base_keyword_token, size_val_token);
                 }
             }

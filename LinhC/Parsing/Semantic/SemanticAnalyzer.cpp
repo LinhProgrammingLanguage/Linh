@@ -1,10 +1,18 @@
 #include "SemanticAnalyzer.hpp"
 #include "../../../config.hpp"
+#include <array>                              // thêm dòng này
+#include <fstream>                            // thêm dòng này
+#include "../Parser/Parser.hpp"               // thêm dòng này
+#include "../../Bytecode/BytecodeEmitter.hpp" // Thêm dòng này để dùng BytecodeEmitter
 
 namespace Linh
 {
     namespace Semantic
     {
+
+        // Thêm các mảng constexpr cho bit options
+        constexpr std::array<int, 4> int_and_uint_bit_options = {8, 16, 32, 64};
+        constexpr std::array<int, 2> float_bit_options = {32, 64};
 
         void SemanticAnalyzer::analyze(const AST::StmtList &stmts, bool reset_state)
         {
@@ -217,12 +225,12 @@ namespace Linh
             }
 
             // Kiểm tra số bit hợp lệ cho kiểu số
-            if (!type.empty() && (type == "int" || type == "uint" || type == "float"))
+            if (!type.empty() && (type == "int" || type == "uint"))
             {
                 if (bit_width != 0)
                 {
                     bool valid = false;
-                    for (int opt : number_bit_options)
+                    for (int opt : int_and_uint_bit_options)
                     {
                         if (bit_width == opt)
                         {
@@ -232,7 +240,26 @@ namespace Linh
                     }
                     if (!valid)
                     {
-                        errors.emplace_back("Invalid bit width for type '" + type + "<" + std::to_string(bit_width) + ">' (must be one of: 8, 16, 32, 64, 128).", stmt->name.line, stmt->name.column_start);
+                        errors.emplace_back("Invalid bit width for type '" + type + "<" + std::to_string(bit_width) + ">' (must be one of: 8, 16, 32, 64).", stmt->name.line, stmt->name.column_start);
+                    }
+                }
+            }
+            else if (!type.empty() && type == "float")
+            {
+                if (bit_width != 0)
+                {
+                    bool valid = false;
+                    for (int opt : float_bit_options)
+                    {
+                        if (bit_width == opt)
+                        {
+                            valid = true;
+                            break;
+                        }
+                    }
+                    if (!valid)
+                    {
+                        errors.emplace_back("Invalid bit width for type 'float<" + std::to_string(bit_width) + ">' (must be one of: 32, 64).", stmt->name.line, stmt->name.column_start);
                     }
                 }
             }
@@ -440,6 +467,58 @@ namespace Linh
             {
                 stmt->finally_block.value()->accept(this);
             }
+        }
+
+        void SemanticAnalyzer::visitImportStmt(AST::ImportStmt *stmt)
+        {
+            // Đảm bảo chỉ xử lý import module dạng: import module_name;
+            if (!stmt->module_name.lexeme.empty())
+            {
+                std::string module_path = "Li/" + stmt->module_name.lexeme;
+                if (module_path.find(".li") == std::string::npos)
+                    module_path += ".li";
+                std::ifstream mod_file(module_path);
+                if (!mod_file)
+                {
+                    errors.emplace_back("Không thể mở file module: " + module_path, stmt->module_name.line, stmt->module_name.column_start);
+                    return;
+                }
+                std::string line, mod_source;
+                while (std::getline(mod_file, line))
+                    mod_source += line + "\n";
+                // Lex và parse module
+                Linh::Lexer mod_lexer(mod_source);
+                auto mod_tokens = mod_lexer.scan_tokens();
+                Linh::Parser mod_parser(mod_tokens);
+                auto mod_ast = mod_parser.parse();
+                if (mod_parser.had_error())
+                {
+                    errors.emplace_back("Lỗi cú pháp trong module: " + module_path, stmt->module_name.line, stmt->module_name.column_start);
+                    return;
+                }
+                // Phân tích semantic cho module (không reset state để giữ lại các hàm/biến)
+                this->analyze(mod_ast, false);
+
+                // --- Sinh bytecode cho module và merge function table ---
+                Linh::BytecodeEmitter mod_emitter;
+                mod_emitter.emit(mod_ast);
+                // Giả sử bạn có một con trỏ emitter chính hoặc một biến toàn cục để merge
+                extern Linh::BytecodeEmitter *g_main_emitter; // Khai báo ở Main.cpp
+                if (g_main_emitter)
+                {
+                    auto &main_funcs = g_main_emitter->get_functions(); // non-const reference
+                    for (const auto &kv : mod_emitter.get_functions())
+                    {
+                        // Nếu chưa có trong main emitter thì thêm vào
+                        if (main_funcs.count(kv.first) == 0)
+                        {
+                            main_funcs.insert(kv);
+                        }
+                    }
+                }
+                // --- Kết thúc merge ---
+            }
+            // ...nếu muốn hỗ trợ import name from module thì xử lý thêm ở đây...
         }
 
         // ExprVisitor (only need to traverse, except UninitLiteralExpr)

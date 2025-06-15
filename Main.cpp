@@ -4,6 +4,7 @@
 #include "LinhC/Parsing/Semantic/SemanticAnalyzer.hpp"
 #include "LinhC/Bytecode/BytecodeEmitter.hpp"
 #include "LiVM/LiVM.hpp"
+#include "REPL.hpp" // Thêm dòng này
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -30,24 +31,7 @@ void runFile(const std::string &filename)
     runSource(source);
 }
 
-void runREPL()
-{
-    std::string line;
-    std::cout << "Linh REPL. Type 'exit' to quit." << std::endl;
-    // --- Persist state across REPL lines ---
-    static Linh::Semantic::SemanticAnalyzer sema;
-    static Linh::BytecodeEmitter emitter;
-    static Linh::LiVM vm;
-    while (true)
-    {
-        std::cout << ">>> ";
-        if (!std::getline(std::cin, line))
-            break;
-        if (line == "exit")
-            break;
-        runSource(line, &sema, &emitter, &vm);
-    }
-}
+Linh::BytecodeEmitter *g_main_emitter = nullptr; // Thêm dòng này
 
 void runSource(const std::string &source_code,
                Linh::Semantic::SemanticAnalyzer *sema_ptr,
@@ -59,125 +43,55 @@ void runSource(const std::string &source_code,
 
     Linh::Lexer lexer(source_code);
     std::vector<Linh::Token> tokens = lexer.scan_tokens();
-
-    std::cout << "\n--- Tokens ---" << std::endl;
-    bool lexer_has_error = false;
-    for (const auto &token : tokens)
-    {
-        std::cout << token.to_string() << std::endl;
-        if (token.type == Linh::TokenType::ERROR)
-        {
-            lexer_has_error = true;
-        }
-    }
-
-    if (lexer_has_error)
-    {
-        std::cerr << "\nLexer error, aborting parse." << std::endl;
-        return;
-    }
-
-    std::cout << "\n--- Abstract Syntax Tree (AST) ---" << std::endl;
     Linh::Parser parser(tokens);
-    Linh::AST::StmtList ast_statements = parser.parse();
+    Linh::AST::StmtList ast = parser.parse();
 
-    if (parser.had_error())
-    {
-        std::cerr << "\nParser encountered errors. AST may be incomplete or empty." << std::endl;
-        // Still try to print AST to see how far it parsed (if ast_statements is not empty)
-    }
+    Linh::BytecodeEmitter emitter;
+    g_main_emitter = &emitter; // Đặt emitter chính trước khi semantic để import có thể merge
+    Linh::Semantic::SemanticAnalyzer sema;
+    sema.analyze(ast);
+    emitter.emit(ast);
+    g_main_emitter = nullptr; // Đặt lại sau khi xong
 
-    if (!ast_statements.empty() || !parser.had_error())
-    { // Print AST if no error or if there is something to print
-        Linh::AST::ASTPrinter ast_printer;
-        std::cout << ast_printer.print(ast_statements) << std::endl;
-    }
-    else if (parser.had_error() && ast_statements.empty())
+    // --- Debug: In ra danh sách function sau khi merge ---
+    std::cout << "\n--- Function Table After Import Merge ---\n";
+    for (const auto &kv : emitter.get_functions())
     {
-        std::cout << "(AST is empty due to parsing errors)" << std::endl;
+        std::cout << "Function: " << kv.first << ", param_count: " << kv.second.param_names.size() << "\n";
     }
+    std::cout << "------------------------------------------\n";
+    // -----------------------------------------------------
 
-    // --- Semantic Analysis ---
-    Linh::Semantic::SemanticAnalyzer *sema;
-    if (sema_ptr)
-        sema = sema_ptr;
-    else
-        sema = new Linh::Semantic::SemanticAnalyzer();
-    // --- Only reset state if not in REPL ---
-    bool reset_state = (sema_ptr == nullptr);
-    sema->analyze(ast_statements, reset_state);
-    if (!sema->errors.empty())
+    // Nếu function table vẫn rỗng, debug thêm:
+    if (emitter.get_functions().empty())
     {
-        std::cerr << "\nSemantic errors:\n";
-        for (const auto &err : sema->errors)
-        {
-            std::cerr << "[Line " << err.line << ", Col " << err.column << "] " << err.message << std::endl;
-        }
-        std::cout << "\nSemantic analysis failed due to errors." << std::endl;
-        if (!sema_ptr)
-            delete sema;
-        return;
-    }
-
-    if (parser.had_error())
-    {
-        std::cout << "\nParse failed due to parser errors." << std::endl;
-        return;
-    }
-
-    // --- Bytecode ---
-    Linh::BytecodeEmitter *emitter;
-    if (emitter_ptr)
-        emitter = emitter_ptr;
-    else
-        emitter = new Linh::BytecodeEmitter();
-    emitter->emit(ast_statements);
-    const auto &chunk = emitter->get_chunk();
-    for (const auto &instr : chunk)
-    {
-        std::cout << "Op: " << static_cast<int>(instr.opcode);
-        // In toán hạng nếu có
-        if (std::holds_alternative<int64_t>(instr.operand))
-            std::cout << " " << std::get<int64_t>(instr.operand);
-        else if (std::holds_alternative<double>(instr.operand))
-            std::cout << " " << std::get<double>(instr.operand);
-        else if (std::holds_alternative<std::string>(instr.operand))
-            std::cout << " \"" << std::get<std::string>(instr.operand) << "\"";
-        else if (std::holds_alternative<bool>(instr.operand))
-            std::cout << " " << (std::get<bool>(instr.operand) ? "true" : "false");
-        std::cout << std::endl;
+        std::cout << "[DEBUG] Function table is empty after import. Possible reasons:\n";
+        std::cout << "- File Li/add.li không tồn tại hoặc không đọc được\n";
+        std::cout << "- Hàm add không được emit đúng trong BytecodeEmitter\n";
+        std::cout << "- Quá trình merge function table trong visitImportStmt không thành công\n";
     }
 
     // --- Run VM ---
-    Linh::LiVM *vm;
-    if (vm_ptr)
-        vm = vm_ptr;
-    else
-        vm = new Linh::LiVM();
-    // --- Convert function table ---
-    std::unordered_map<std::string, Linh::LiVM::Function> vm_funcs;
-    for (const auto &[name, finfo] : emitter->get_functions())
-    {
-        Linh::LiVM::Function f;
-        f.code = finfo.code;
-        f.param_names = finfo.param_names;
-        vm_funcs[name] = std::move(f);
-    }
-    vm->set_functions(vm_funcs);
-    // ------------------------------
+    Linh::LiVM vm;
 
-    vm->run(chunk);
+    // --- Chuyển đổi function table ---
+    std::unordered_map<std::string, Linh::LiVM::Function> vm_functions;
+    for (const auto &kv : emitter.get_functions())
+    {
+        Linh::LiVM::Function fn;
+        fn.code = kv.second.code;
+        fn.param_names = kv.second.param_names;
+        vm_functions[kv.first] = std::move(fn);
+    }
+    vm.set_functions(vm_functions);
+    // --- Kết thúc chuyển đổi ---
+
+    vm.run(emitter.get_chunk());
 
     // Debug: print VM stack and variables after execution (optional)
     // (You can add methods to LiVM to expose stack/vars for debugging if needed)
 
     std::cout << "\nParse succeeded!" << std::endl;
-    if (!sema_ptr)
-        delete sema;
-    if (!emitter_ptr)
-        delete emitter;
-    if (!vm_ptr)
-        delete vm;
 }
 
 void runSource(const std::string &source_code)
@@ -193,7 +107,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        runREPL();
+        Linh::run_repl(); // Thay thế runREPL()
     }
 
     return 0;

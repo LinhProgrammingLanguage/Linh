@@ -49,7 +49,6 @@ add_library(LiVMLib STATIC
     LiVM/iostream/iostream.cpp # Thêm dòng này để build iostream
     LiVM/type.cpp
     LiVM/Loop.cpp
-    LiVM/Function.cpp
 )
 target_include_directories(LiVMLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -65,6 +64,7 @@ add_executable(LinhApp
     LinhC/Parsing/Semantic/SemanticAnalyzer.cpp
     LinhC/Parsing/AST/ASTPrinter.cpp
     LinhC/Bytecode/BytecodeEmitter.cpp
+    REPL.cpp # Thêm dòng này
 )
 target_link_libraries(LinhApp PRIVATE
     LinhLexerLib
@@ -72,34 +72,7 @@ target_link_libraries(LinhApp PRIVATE
     LinhParserLib
     LinhSemanticLib
     LiVMLib
-    boost_multiprecision
-    # Không cần utf8cpp vì chỉ là header-only, đã include ở trên
-)
-
-include(FetchContent)
-FetchContent_Declare(
-  CPM
-  GIT_REPOSITORY https://github.com/cpm-cmake/CPM.cmake.git
-  GIT_TAG origin/master
-)
-FetchContent_MakeAvailable(CPM)
-
-# --- CPM: Boost.Multiprecision (chỉ riêng multiprecision) ---
-CPMAddPackage(
-  NAME boost_multiprecision
-  GITHUB_REPOSITORY boostorg/multiprecision
-  GIT_TAG boost-1.85.0
-)
-if(boost_multiprecision_ADDED)
-    message(STATUS "Boost.Multiprecision added via CPM")
-endif()
-
-target_link_libraries(LinhApp PRIVATE
-    LinhLexerLib
-    LinhASTLib
-    LinhParserLib
-    LinhSemanticLib
-    boost_multiprecision
+    # boost_multiprecision -- removed
     # Không cần utf8cpp vì chỉ là header-only, đã include ở trên
 )
 

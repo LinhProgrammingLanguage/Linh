@@ -21,6 +21,7 @@ namespace Linh
 
         // Getter for function table
         const std::unordered_map<std::string, FunctionInfo> &get_functions() const { return functions; }
+        std::unordered_map<std::string, FunctionInfo> &get_functions() { return functions; } // <--- Thêm dòng này
 
         // ExprVisitor
         std::any visitBinaryExpr(AST::BinaryExpr *expr) override;
@@ -56,6 +57,7 @@ namespace Linh
         void visitDeleteStmt(AST::DeleteStmt *stmt) override;
         void visitThrowStmt(AST::ThrowStmt *stmt) override;
         void visitTryStmt(AST::TryStmt *stmt) override;
+        void visitImportStmt(AST::ImportStmt *stmt) override;
 
     private:
         BytecodeChunk chunk;

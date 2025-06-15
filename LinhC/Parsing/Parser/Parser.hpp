@@ -70,6 +70,7 @@ namespace Linh
         AST::StmtPtr declaration();
         AST::StmtPtr var_declaration(Token keyword_token);
         AST::StmtPtr function_declaration(Token func_keyword);
+        AST::StmtPtr import_statement(); // <--- Thêm dòng này
         AST::StmtPtr statement();
         AST::StmtPtr print_statement();
         AST::StmtPtr if_statement();
