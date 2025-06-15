@@ -16,8 +16,27 @@ namespace Linh
 
         void type();
 
-        // Thêm khai báo friend hoặc public cho hàm vòng lặp
         friend void handle_loop_opcode(LiVM &vm, const Instruction &instr, const BytecodeChunk &chunk, size_t &ip);
+
+        struct Function
+        {
+            BytecodeChunk code;
+            std::vector<std::string> param_names;
+        };
+        std::unordered_map<std::string, Function> functions;
+        struct CallFrame
+        {
+            size_t return_ip;
+            std::unordered_map<int, std::variant<int64_t, double, std::string, bool>> locals;
+        };
+        std::vector<CallFrame> call_stack;
+
+        // --- Add this method ---
+        void set_functions(const std::unordered_map<std::string, Function> &funcs)
+        {
+            functions = funcs;
+        }
+        // ----------------------
 
     private:
         std::vector<std::variant<int64_t, double, std::string, bool>> stack;

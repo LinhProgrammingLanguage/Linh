@@ -6,11 +6,50 @@ namespace Linh
 
     void BytecodeEmitter::emit(const AST::StmtList &stmts)
     {
-        chunk.clear(); // Đảm bảo chunk chỉ chứa bytecode của dòng hiện tại, nhưng giữ lại var_table và next_var_index
+        chunk.clear();
+        // --- Emit all function definitions first ---
         for (const auto &stmt : stmts)
         {
-            if (stmt)
-                stmt->accept(this);
+            if (auto *fn = dynamic_cast<AST::FunctionDeclStmt *>(stmt.get()))
+            {
+                // Prepare function info
+                FunctionInfo finfo;
+                // Save old var_table/next_var_index
+                auto old_var_table = var_table;
+                auto old_next_var_index = next_var_index;
+                var_table.clear();
+                next_var_index = 0;
+                // Add parameters to var_table
+                for (const auto &param : fn->params)
+                {
+                    finfo.param_names.push_back(param.name.lexeme);
+                    get_var_index(param.name.lexeme);
+                }
+                // Emit function body into finfo.code
+                if (fn->body)
+                {
+                    auto old_chunk = chunk;
+                    chunk.clear();
+                    for (const auto &s : fn->body->statements)
+                        if (s)
+                            s->accept(this);
+                    emit_instr(OpCode::RET);
+                    finfo.code = chunk;
+                    chunk = old_chunk;
+                }
+                functions[fn->name.lexeme] = std::move(finfo);
+                var_table = old_var_table;
+                next_var_index = old_next_var_index;
+            }
+        }
+        // --- Emit global code (non-function statements) ---
+        for (const auto &stmt : stmts)
+        {
+            if (!dynamic_cast<AST::FunctionDeclStmt *>(stmt.get()))
+            {
+                if (stmt)
+                    stmt->accept(this);
+            }
         }
         emit_instr(OpCode::HALT);
     }
@@ -246,7 +285,12 @@ namespace Linh
     }
 
     void BytecodeEmitter::visitFunctionDeclStmt(AST::FunctionDeclStmt *) {}
-    void BytecodeEmitter::visitReturnStmt(AST::ReturnStmt *) {}
+    void BytecodeEmitter::visitReturnStmt(AST::ReturnStmt *stmt)
+    {
+        if (stmt->value)
+            stmt->value->accept(this);
+        emit_instr(OpCode::RET);
+    }
     void BytecodeEmitter::visitBreakStmt(AST::BreakStmt *) {}
     void BytecodeEmitter::visitContinueStmt(AST::ContinueStmt *) {}
     void BytecodeEmitter::visitSwitchStmt(AST::SwitchStmt *) {}
@@ -256,38 +300,34 @@ namespace Linh
 
     std::any BytecodeEmitter::visitCallExpr(AST::CallExpr *expr)
     {
-        // Special case: input(...)
+        // Special case: input(...) and type(...)
         if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->callee.get()))
         {
             if (id->name.lexeme == "input")
             {
-                // Only support input with 0 or 1 argument (prompt)
                 if (!expr->arguments.empty())
-                {
-                    expr->arguments[0]->accept(this); // push prompt string
-                }
+                    expr->arguments[0]->accept(this);
                 else
-                {
-                    emit_instr(OpCode::PUSH_STR, std::string("")); // empty prompt
-                }
+                    emit_instr(OpCode::PUSH_STR, std::string(""));
                 emit_instr(OpCode::INPUT);
                 return {};
             }
-            // Special case: type(...)
             if (id->name.lexeme == "type")
             {
-                // Chỉ hỗ trợ 1 đối số: type(a)
                 if (!expr->arguments.empty())
-                {
-                    expr->arguments[0]->accept(this); // push biến/giá trị
-                }
+                    expr->arguments[0]->accept(this);
                 else
-                {
                     emit_instr(OpCode::PUSH_STR, std::string(""));
-                }
                 emit_instr(OpCode::TYPEOF);
                 return {};
             }
+            // --- User-defined function call ---
+            // Evaluate arguments (push in order)
+            for (auto &arg : expr->arguments)
+                if (arg)
+                    arg->accept(this);
+            emit_instr(OpCode::CALL, id->name.lexeme);
+            return {};
         }
         // Not implemented yet for other calls
         return {};

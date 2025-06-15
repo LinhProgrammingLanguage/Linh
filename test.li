@@ -1,5 +1,4 @@
-func add(var a: int, var b: int): int {
-    return a + b;
+func add(var a: int, var b: int){
+    print(a + b);
 }
-
-print(add(3, 4)); // This should return 7
+add(5, 10);

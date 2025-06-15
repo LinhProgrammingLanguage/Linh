@@ -9,9 +9,18 @@ namespace Linh
     class BytecodeEmitter : public AST::ExprVisitor, public AST::StmtVisitor
     {
     public:
+        struct FunctionInfo
+        {
+            BytecodeChunk code;
+            std::vector<std::string> param_names;
+        };
+
         BytecodeEmitter();
         void emit(const AST::StmtList &stmts);
         const BytecodeChunk &get_chunk() const { return chunk; }
+
+        // Getter for function table
+        const std::unordered_map<std::string, FunctionInfo> &get_functions() const { return functions; }
 
         // ExprVisitor
         std::any visitBinaryExpr(AST::BinaryExpr *expr) override;
@@ -52,6 +61,10 @@ namespace Linh
         BytecodeChunk chunk;
         std::unordered_map<std::string, int> var_table; // tên biến -> index (giản lược)
         int next_var_index = 0;
+
+        // --- Add for function support ---
+        std::unordered_map<std::string, FunctionInfo> functions;
+        // -------------------------------
 
         int get_var_index(const std::string &name);
         void emit_instr(OpCode op, BytecodeValue val = {});

@@ -154,6 +154,18 @@ void runSource(const std::string &source_code,
         vm = vm_ptr;
     else
         vm = new Linh::LiVM();
+    // --- Convert function table ---
+    std::unordered_map<std::string, Linh::LiVM::Function> vm_funcs;
+    for (const auto &[name, finfo] : emitter->get_functions())
+    {
+        Linh::LiVM::Function f;
+        f.code = finfo.code;
+        f.param_names = finfo.param_names;
+        vm_funcs[name] = std::move(f);
+    }
+    vm->set_functions(vm_funcs);
+    // ------------------------------
+
     vm->run(chunk);
 
     // Debug: print VM stack and variables after execution (optional)
