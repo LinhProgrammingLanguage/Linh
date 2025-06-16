@@ -1,0 +1,6 @@
+vas a = 2;
+vas b = 0;
+print("-------Start of the program-------");
+print("a: &{a}, b: &{b}");
+print(a / b);
+print("-------End of the program-------");

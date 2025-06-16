@@ -69,6 +69,6 @@ namespace Linh
         // -------------------------------
 
         int get_var_index(const std::string &name);
-        void emit_instr(OpCode op, BytecodeValue val = {});
+        void emit_instr(OpCode op, BytecodeValue val = {}, int line = 0, int col = 0);
     };
 }

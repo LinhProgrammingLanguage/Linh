@@ -202,25 +202,18 @@ namespace Linh
         if (match({TokenType::NEW_KW}))
         {
             Token keyword_new = previous();
-            // Sau 'new' phải là một lời gọi constructor, có thể là `MyClass()` hoặc `MyClass` (ngầm định không có tham số)
             AST::ExprPtr class_constructor_expr = call_or_member_access();
-
-            // Nếu nó chỉ là một Identifier (ví dụ `new MyClass`), chúng ta cần bọc nó trong một CallExpr giả
-            // không có tham số, vì AST::NewExpr kỳ vọng một CallExpr (hoặc thứ gì đó tương tự).
-            // Tuy nhiên, call_or_member_access có thể đã trả về CallExpr nếu có dấu `()`.
             if (dynamic_cast<AST::IdentifierExpr *>(class_constructor_expr.get()) &&
                 !dynamic_cast<AST::CallExpr *>(class_constructor_expr.get()))
-            { // Chỉ là ID, không phải Call
-                // Tạo CallExpr giả
-                Token dummy_rparen(TokenType::RPAREN, ")", std::monostate{}, keyword_new.line, keyword_new.column_start + 1); // Vị trí token không quan trọng lắm
-                class_constructor_expr = std::make_unique<AST::CallExpr>(std::move(class_constructor_expr), dummy_rparen, std::vector<AST::ExprPtr>{});
+            {
+                Token dummy_rparen(TokenType::RPAREN, ")", std::monostate{}, keyword_new.line, keyword_new.column_start + 1);
+                class_constructor_expr = std::unique_ptr<AST::Expr>(new AST::CallExpr(std::move(class_constructor_expr), dummy_rparen, std::vector<AST::ExprPtr>{}));
             }
             else if (!dynamic_cast<AST::CallExpr *>(class_constructor_expr.get()))
             {
-                // Nếu không phải Identifier đơn giản mà cũng không phải CallExpr (ví dụ: new 123), thì là lỗi
                 throw error(previous(), "Mong đợi một lời gọi constructor (ví dụ: MyClass() hoặc MyClass) sau 'new'.");
             }
-            return std::make_unique<AST::NewExpr>(keyword_new, std::move(class_constructor_expr));
+            return std::unique_ptr<AST::Expr>(new AST::NewExpr(keyword_new, std::move(class_constructor_expr)));
         }
         return call_or_member_access(); // Nếu không phải unary prefix hoặc new
     }
@@ -246,7 +239,7 @@ namespace Linh
                 Token l_bracket_token = previous();
                 AST::ExprPtr index_expr = expression();
                 Token r_bracket_token = consume(TokenType::RBRACKET, "Thiếu ']' sau chỉ số truy cập.");
-                expr = std::make_unique<AST::SubscriptExpr>(std::move(expr), l_bracket_token, std::move(index_expr), r_bracket_token);
+                expr = std::unique_ptr<AST::Expr>(new AST::SubscriptExpr(std::move(expr), l_bracket_token, std::move(index_expr), r_bracket_token));
             }
             // else if (match({TokenType::DOT})) { // Truy cập thành viên: expr.ident
             //     expr = member_access_expression(std::move(expr)); // Sẽ thêm hàm này sau
@@ -291,9 +284,9 @@ namespace Linh
         if (match({TokenType::TRUE_KW}))
             return std::make_unique<AST::LiteralExpr>(true);
         if (match({TokenType::UNINIT_KW}))
-            return std::make_unique<AST::UninitLiteralExpr>(previous()); // previous() là UNINIT_KW
+            return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(previous())); // previous() là UNINIT_KW
         if (match({TokenType::THIS_KW}))
-            return std::make_unique<AST::ThisExpr>(previous()); // previous() là THIS_KW
+            return std::unique_ptr<AST::Expr>(new AST::ThisExpr(previous())); // previous() là THIS_KW
 
         if (match({TokenType::INT, TokenType::FLOAT_NUM, TokenType::STR}))
         {
@@ -320,7 +313,7 @@ namespace Linh
         { // Biểu thức nhóm: ( expression )
             AST::ExprPtr expr_in_group = expression();
             consume(TokenType::RPAREN, "Thiếu ')' sau biểu thức trong dấu ngoặc.");
-            return std::make_unique<AST::GroupingExpr>(std::move(expr_in_group));
+            return std::unique_ptr<AST::Expr>(new AST::GroupingExpr(std::move(expr_in_group)));
         }
 
         // Thêm hỗ trợ cho array literal `[]`
@@ -368,7 +361,8 @@ namespace Linh
         }
 
         Token r_bracket = consume(TokenType::RBRACKET, "Thiếu ']' để kết thúc array literal.");
-        return std::make_unique<AST::ArrayLiteralExpr>(l_bracket, std::move(elements), r_bracket);
+        // Sửa: trả về ExprPtr
+        return std::unique_ptr<AST::Expr>(new AST::ArrayLiteralExpr(l_bracket, std::move(elements), r_bracket));
     }
 
     AST::ExprPtr Parser::parse_map_literal()
@@ -387,9 +381,8 @@ namespace Linh
                 // --- Sửa ở đây: nếu thiếu value thì tự động chèn UninitLiteralExpr ---
                 if (check(TokenType::COMMA) || check(TokenType::RBRACE))
                 {
-                    // Không báo lỗi, tự động chèn giá trị uninit
                     Token uninit_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, colon_token.line, colon_token.column_start + 1);
-                    AST::ExprPtr value_expr = std::make_unique<AST::UninitLiteralExpr>(uninit_token);
+                    AST::ExprPtr value_expr = std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_token));
                     entries.emplace_back(std::move(key_expr), colon_token, std::move(value_expr));
                 }
                 else
@@ -414,7 +407,8 @@ namespace Linh
         }
 
         Token r_brace = consume(TokenType::RBRACE, "Thiếu '}' để kết thúc map literal.");
-        return std::make_unique<AST::MapLiteralExpr>(l_brace, std::move(entries), r_brace);
+        // Sửa: trả về ExprPtr
+        return std::unique_ptr<AST::Expr>(new AST::MapLiteralExpr(l_brace, std::move(entries), r_brace));
     }
 
     AST::ExprPtr Parser::parse_interpolated_string(const Token &first_str_token)

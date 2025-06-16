@@ -54,9 +54,9 @@ namespace Linh
         emit_instr(OpCode::HALT);
     }
 
-    void BytecodeEmitter::emit_instr(OpCode op, BytecodeValue val)
+    void BytecodeEmitter::emit_instr(OpCode op, BytecodeValue val, int line, int col)
     {
-        chunk.emplace_back(op, val);
+        chunk.emplace_back(op, val, line, col);
     }
 
     int BytecodeEmitter::get_var_index(const std::string &name)
@@ -75,19 +75,19 @@ namespace Linh
         // int<8>, int<16>, int<32>, int<64>, uint<8>, ... đều là int64_t ở runtime
         // float<32>, float<64> đều là double ở runtime
         if (std::holds_alternative<int64_t>(expr->value))
-            emit_instr(OpCode::PUSH_INT, std::get<int64_t>(expr->value));
+            emit_instr(OpCode::PUSH_INT, std::get<int64_t>(expr->value), expr->getLine(), expr->getCol());
         else if (std::holds_alternative<double>(expr->value))
-            emit_instr(OpCode::PUSH_FLOAT, std::get<double>(expr->value));
+            emit_instr(OpCode::PUSH_FLOAT, std::get<double>(expr->value), expr->getLine(), expr->getCol());
         else if (std::holds_alternative<std::string>(expr->value))
-            emit_instr(OpCode::PUSH_STR, std::get<std::string>(expr->value));
+            emit_instr(OpCode::PUSH_STR, std::get<std::string>(expr->value), expr->getLine(), expr->getCol());
         else if (std::holds_alternative<bool>(expr->value))
-            emit_instr(OpCode::PUSH_BOOL, std::get<bool>(expr->value));
+            emit_instr(OpCode::PUSH_BOOL, std::get<bool>(expr->value), expr->getLine(), expr->getCol());
         return {};
     }
 
     std::any BytecodeEmitter::visitIdentifierExpr(AST::IdentifierExpr *expr)
     {
-        emit_instr(OpCode::LOAD_VAR, get_var_index(expr->name.lexeme));
+        emit_instr(OpCode::LOAD_VAR, get_var_index(expr->name.lexeme), expr->getLine(), expr->getCol());
         return {};
     }
 
@@ -100,48 +100,50 @@ namespace Linh
             expr->right->accept(this);
 
         // Map TokenType to OpCode
+        int line = expr->op.line;
+        int col = expr->op.column_start;
         switch (expr->op.type)
         {
         case TokenType::PLUS:
-            emit_instr(OpCode::ADD);
+            emit_instr(OpCode::ADD, {}, line, col);
             break;
         case TokenType::MINUS:
-            emit_instr(OpCode::SUB);
+            emit_instr(OpCode::SUB, {}, line, col);
             break;
         case TokenType::STAR:
-            emit_instr(OpCode::MUL);
+            emit_instr(OpCode::MUL, {}, line, col);
             break;
         case TokenType::SLASH:
-            emit_instr(OpCode::DIV);
+            emit_instr(OpCode::DIV, {}, line, col);
             break;
         case TokenType::PERCENT:
-            emit_instr(OpCode::MOD);
+            emit_instr(OpCode::MOD, {}, line, col);
             break;
         case TokenType::EQ_EQ:
-            emit_instr(OpCode::EQ);
+            emit_instr(OpCode::EQ, {}, line, col);
             break;
         case TokenType::NOT_EQ:
-            emit_instr(OpCode::NEQ);
+            emit_instr(OpCode::NEQ, {}, line, col);
             break;
         case TokenType::LT:
-            emit_instr(OpCode::LT);
+            emit_instr(OpCode::LT, {}, line, col);
             break;
         case TokenType::GT:
-            emit_instr(OpCode::GT);
+            emit_instr(OpCode::GT, {}, line, col);
             break;
         case TokenType::LT_EQ:
-            emit_instr(OpCode::LTE);
+            emit_instr(OpCode::LTE, {}, line, col);
             break;
         case TokenType::GT_EQ:
-            emit_instr(OpCode::GTE);
+            emit_instr(OpCode::GTE, {}, line, col);
             break;
         case TokenType::AND_LOGIC:
         case TokenType::AND_KW:
-            emit_instr(OpCode::AND);
+            emit_instr(OpCode::AND, {}, line, col);
             break;
         case TokenType::OR_LOGIC:
         case TokenType::OR_KW:
-            emit_instr(OpCode::OR);
+            emit_instr(OpCode::OR, {}, line, col);
             break;
         default:
             // Not implemented
@@ -157,13 +159,13 @@ namespace Linh
         switch (expr->op.type)
         {
         case TokenType::MINUS:
-            emit_instr(OpCode::PUSH_INT, 0);
-            emit_instr(OpCode::SWAP); // Not defined, but you may need to implement SWAP for correct order
-            emit_instr(OpCode::SUB);
+            emit_instr(OpCode::PUSH_INT, 0, expr->getLine(), expr->getCol());
+            emit_instr(OpCode::SWAP, {}, expr->getLine(), expr->getCol()); // Not defined, but you may need to implement SWAP for correct order
+            emit_instr(OpCode::SUB, {}, expr->getLine(), expr->getCol());
             break;
         case TokenType::NOT:
         case TokenType::NOT_KW:
-            emit_instr(OpCode::NOT);
+            emit_instr(OpCode::NOT, {}, expr->getLine(), expr->getCol());
             break;
         default:
             break;
@@ -184,9 +186,9 @@ namespace Linh
         if (expr->value)
             expr->value->accept(this);
         int idx = get_var_index(expr->name.lexeme);
-        emit_instr(OpCode::STORE_VAR, idx);
+        emit_instr(OpCode::STORE_VAR, idx, expr->getLine(), expr->getCol());
         // Optionally, load the value back (for chaining)
-        emit_instr(OpCode::LOAD_VAR, idx);
+        emit_instr(OpCode::LOAD_VAR, idx, expr->getLine(), expr->getCol());
         return {};
     }
 
@@ -201,11 +203,11 @@ namespace Linh
         {
         case TokenType::AND_LOGIC:
         case TokenType::AND_KW:
-            emit_instr(OpCode::AND);
+            emit_instr(OpCode::AND, {}, expr->getLine(), expr->getCol());
             break;
         case TokenType::OR_LOGIC:
         case TokenType::OR_KW:
-            emit_instr(OpCode::OR);
+            emit_instr(OpCode::OR, {}, expr->getLine(), expr->getCol());
             break;
         default:
             break;
@@ -217,14 +219,14 @@ namespace Linh
     {
         if (stmt->expression)
             stmt->expression->accept(this);
-        emit_instr(OpCode::PRINT);
+        emit_instr(OpCode::PRINT, {}, stmt->getLine(), stmt->getCol());
     }
 
     void BytecodeEmitter::visitExpressionStmt(AST::ExpressionStmt *stmt)
     {
         if (stmt->expression)
             stmt->expression->accept(this);
-        emit_instr(OpCode::POP);
+        emit_instr(OpCode::POP, {}, stmt->getLine(), stmt->getCol());
     }
 
     void BytecodeEmitter::visitVarDeclStmt(AST::VarDeclStmt *stmt)
@@ -233,8 +235,8 @@ namespace Linh
         if (stmt->initializer)
             stmt->initializer->accept(this);
         else
-            emit_instr(OpCode::PUSH_INT, 0); // default 0
-        emit_instr(OpCode::STORE_VAR, idx);
+            emit_instr(OpCode::PUSH_INT, 0, stmt->getLine(), stmt->getCol()); // default 0
+        emit_instr(OpCode::STORE_VAR, idx, stmt->getLine(), stmt->getCol());
     }
 
     void BytecodeEmitter::visitBlockStmt(AST::BlockStmt *stmt)
@@ -262,13 +264,13 @@ namespace Linh
 
         // Đặt chỗ cho JMP_IF_FALSE, sẽ sửa sau
         size_t jmp_if_false_pos = chunk.size();
-        emit_instr(OpCode::JMP_IF_FALSE, int64_t(-1)); // placeholder
+        emit_instr(OpCode::JMP_IF_FALSE, int64_t(-1), stmt->getLine(), stmt->getCol()); // placeholder
 
         if (stmt->body)
             stmt->body->accept(this);
 
         // Quay lại đầu vòng lặp
-        emit_instr(OpCode::JMP, int64_t(cond_pos));
+        emit_instr(OpCode::JMP, int64_t(cond_pos), stmt->getLine(), stmt->getCol());
 
         // Sửa lại JMP_IF_FALSE để nhảy ra khỏi vòng lặp
         size_t end_pos = chunk.size();
@@ -283,7 +285,7 @@ namespace Linh
             stmt->body->accept(this);
         if (stmt->condition)
             stmt->condition->accept(this);
-        emit_instr(OpCode::JMP_IF_TRUE, int64_t(loop_start));
+        emit_instr(OpCode::JMP_IF_TRUE, int64_t(loop_start), stmt->getLine(), stmt->getCol());
     }
 
     void BytecodeEmitter::visitFunctionDeclStmt(AST::FunctionDeclStmt *) {}
@@ -291,7 +293,7 @@ namespace Linh
     {
         if (stmt->value)
             stmt->value->accept(this);
-        emit_instr(OpCode::RET);
+        emit_instr(OpCode::RET, {}, stmt->getLine(), stmt->getCol());
     }
     void BytecodeEmitter::visitBreakStmt(AST::BreakStmt *) {}
     void BytecodeEmitter::visitContinueStmt(AST::ContinueStmt *) {}
@@ -310,8 +312,8 @@ namespace Linh
                 if (!expr->arguments.empty())
                     expr->arguments[0]->accept(this);
                 else
-                    emit_instr(OpCode::PUSH_STR, std::string(""));
-                emit_instr(OpCode::INPUT);
+                    emit_instr(OpCode::PUSH_STR, std::string(""), expr->getLine(), expr->getCol());
+                emit_instr(OpCode::INPUT, {}, expr->getLine(), expr->getCol());
                 return {};
             }
             if (id->name.lexeme == "type")
@@ -319,8 +321,8 @@ namespace Linh
                 if (!expr->arguments.empty())
                     expr->arguments[0]->accept(this);
                 else
-                    emit_instr(OpCode::PUSH_STR, std::string(""));
-                emit_instr(OpCode::TYPEOF);
+                    emit_instr(OpCode::PUSH_STR, std::string(""), expr->getLine(), expr->getCol());
+                emit_instr(OpCode::TYPEOF, {}, expr->getLine(), expr->getCol());
                 return {};
             }
             // --- User-defined function call ---
@@ -328,7 +330,7 @@ namespace Linh
             for (auto &arg : expr->arguments)
                 if (arg)
                     arg->accept(this);
-            emit_instr(OpCode::CALL, id->name.lexeme);
+            emit_instr(OpCode::CALL, id->name.lexeme, expr->getLine(), expr->getCol());
             return {};
         }
         // Not implemented yet for other calls
@@ -344,17 +346,17 @@ namespace Linh
             return {};
         int idx = get_var_index(id->name.lexeme);
         // LOAD_VAR idx
-        emit_instr(OpCode::LOAD_VAR, idx);
+        emit_instr(OpCode::LOAD_VAR, idx, expr->getLine(), expr->getCol());
         // PUSH_INT 1
-        emit_instr(OpCode::PUSH_INT, 1);
+        emit_instr(OpCode::PUSH_INT, 1, expr->getLine(), expr->getCol());
         if (expr->op_token.type == TokenType::PLUS_PLUS)
-            emit_instr(OpCode::ADD);
+            emit_instr(OpCode::ADD, {}, expr->getLine(), expr->getCol());
         else if (expr->op_token.type == TokenType::MINUS_MINUS)
-            emit_instr(OpCode::SUB);
+            emit_instr(OpCode::SUB, {}, expr->getLine(), expr->getCol());
         // STORE_VAR idx
-        emit_instr(OpCode::STORE_VAR, idx);
+        emit_instr(OpCode::STORE_VAR, idx, expr->getLine(), expr->getCol());
         // Optionally, load value back (for expression value)
-        emit_instr(OpCode::LOAD_VAR, idx);
+        emit_instr(OpCode::LOAD_VAR, idx, expr->getLine(), expr->getCol());
         return {};
     }
 
@@ -396,7 +398,36 @@ namespace Linh
 
     std::any BytecodeEmitter::visitInterpolatedStringExpr(AST::InterpolatedStringExpr *expr)
     {
-        // Not implemented yet
+        // Nếu chỉ có 1 phần là chuỗi thì PUSH_STR luôn
+        if (expr->parts.size() == 1 && std::holds_alternative<std::string>(expr->parts[0]))
+        {
+            emit_instr(OpCode::PUSH_STR, std::get<std::string>(expr->parts[0]), expr->getLine(), expr->getCol());
+            return {};
+        }
+        // Duyệt từng phần, đẩy từng phần lên stack (dưới dạng string)
+        for (const auto &part : expr->parts)
+        {
+            if (std::holds_alternative<std::string>(part))
+            {
+                emit_instr(OpCode::PUSH_STR, std::get<std::string>(part), expr->getLine(), expr->getCol());
+            }
+            else
+            {
+                // Phần là biểu thức, emit cho expr, rồi ép về string bằng cách nối với ""
+                auto *subexpr = std::get<AST::ExprPtr>(part).get();
+                if (subexpr)
+                {
+                    subexpr->accept(this);
+                    emit_instr(OpCode::PUSH_STR, std::string(""), expr->getLine(), expr->getCol());
+                    emit_instr(OpCode::ADD, {}, expr->getLine(), expr->getCol()); // ép về string
+                }
+            }
+        }
+        // Nối tất cả lại thành một chuỗi (dùng toán tử +)
+        for (size_t i = 1; i < expr->parts.size(); ++i)
+        {
+            emit_instr(OpCode::ADD, {}, expr->getLine(), expr->getCol());
+        }
         return {};
     }
 

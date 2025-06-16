@@ -94,12 +94,35 @@ namespace Linh
             {
                 auto b = pop();
                 auto a = pop();
-                // --- Support int128/float128 if needed ---
+                // --- HỖ TRỢ NỐI CHUỖI ---
+                if (instr.opcode == OpCode::ADD &&
+                    (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b)))
+                {
+                    std::string sa, sb;
+                    if (std::holds_alternative<std::string>(a))
+                        sa = std::get<std::string>(a);
+                    else if (std::holds_alternative<int64_t>(a))
+                        sa = std::to_string(std::get<int64_t>(a));
+                    else if (std::holds_alternative<double>(a))
+                        sa = std::to_string(std::get<double>(a));
+                    else if (std::holds_alternative<bool>(a))
+                        sa = std::get<bool>(a) ? "true" : "false";
+                    if (std::holds_alternative<std::string>(b))
+                        sb = std::get<std::string>(b);
+                    else if (std::holds_alternative<int64_t>(b))
+                        sb = std::to_string(std::get<int64_t>(b));
+                    else if (std::holds_alternative<double>(b))
+                        sb = std::to_string(std::get<double>(b));
+                    else if (std::holds_alternative<bool>(b))
+                        sb = std::get<bool>(b) ? "true" : "false";
+                    push(sa + sb);
+                    break;
+                }
+                // --- KẾT THÚC HỖ TRỢ NỐI CHUỖI ---
                 if (std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b))
                 {
                     int64_t av = std::get<int64_t>(a);
                     int64_t bv = std::get<int64_t>(b);
-                    // If you want to support int128, check here (not enough info in current design)
                     switch (instr.opcode)
                     {
                     case OpCode::ADD:
@@ -112,22 +135,36 @@ namespace Linh
                         push(av * bv);
                         break;
                     case OpCode::DIV:
-                        push(av / bv);
+                        if (bv == 0)
+                        {
+                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Division by zero (int)" << std::endl;
+                            push(int64_t(0));
+                        }
+                        else
+                        {
+                            push(av / bv);
+                        }
                         break;
                     case OpCode::MOD:
-                        push(av % bv);
+                        if (bv == 0)
+                        {
+                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Modulo by zero (int)" << std::endl;
+                            push(int64_t(0));
+                        }
+                        else
+                        {
+                            push(av % bv);
+                        }
                         break;
                     default:
                         break;
                     }
                 }
-                // Support float128 if needed
                 else if ((std::holds_alternative<int64_t>(a) || std::holds_alternative<double>(a)) &&
                          (std::holds_alternative<int64_t>(b) || std::holds_alternative<double>(b)))
                 {
                     double av = std::holds_alternative<int64_t>(a) ? static_cast<double>(std::get<int64_t>(a)) : std::get<double>(a);
                     double bv = std::holds_alternative<int64_t>(b) ? static_cast<double>(std::get<int64_t>(b)) : std::get<double>(b);
-                    // If you want to support float128, check here (not enough info in current design)
                     switch (instr.opcode)
                     {
                     case OpCode::ADD:
@@ -140,21 +177,34 @@ namespace Linh
                         push(av * bv);
                         break;
                     case OpCode::DIV:
-                        push(av / bv);
+                        if (bv == 0.0)
+                        {
+                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Division by zero (float)" << std::endl;
+                            push(0.0);
+                        }
+                        else
+                        {
+                            push(av / bv);
+                        }
                         break;
                     case OpCode::MOD:
-                        push(static_cast<int64_t>(av) % static_cast<int64_t>(bv));
+                        if (bv == 0.0)
+                        {
+                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Modulo by zero (float)" << std::endl;
+                            push(0.0);
+                        }
+                        else
+                        {
+                            push(static_cast<int64_t>(av) % static_cast<int64_t>(bv));
+                        }
                         break;
                     default:
                         break;
                     }
                 }
-                // --- Support int128/float128 using boost if needed ---
-                // else if (std::holds_alternative<int128_t>(a) && std::holds_alternative<int128_t>(b)) { ... }
-                // else if (std::holds_alternative<float128_t>(a) && std::holds_alternative<float128_t>(b)) { ... }
                 else
                 {
-                    std::cerr << "VM: ADD/SUB/MUL/DIV/MOD only supports int/float" << std::endl;
+                    std::cerr << "VM: ADD/SUB/MUL/DIV/MOD only supports int/float at instruction #" << ip << std::endl;
                 }
                 break;
             }
@@ -346,63 +396,127 @@ namespace Linh
                     {
                         auto b = pop();
                         auto a = pop();
-                        if (std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b))
+                        // --- HỖ TRỢ NỐI CHUỖI ---
+                        if (finstr.opcode == OpCode::ADD &&
+                            (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b)))
                         {
-                            int64_t av = std::get<int64_t>(a);
-                            int64_t bv = std::get<int64_t>(b);
-                            switch (finstr.opcode)
-                            {
-                            case OpCode::ADD:
-                                push(av + bv);
-                                break;
-                            case OpCode::SUB:
-                                push(av - bv);
-                                break;
-                            case OpCode::MUL:
-                                push(av * bv);
-                                break;
-                            case OpCode::DIV:
-                                push(av / bv);
-                                break;
-                            case OpCode::MOD:
-                                push(av % bv);
-                                break;
-                            default:
-                                break;
-                            }
+                            std::string sa, sb;
+                            // Chuyển a về string
+                            if (std::holds_alternative<std::string>(a))
+                                sa = std::get<std::string>(a);
+                            else if (std::holds_alternative<int64_t>(a))
+                                sa = std::to_string(std::get<int64_t>(a));
+                            else if (std::holds_alternative<double>(a))
+                                sa = std::to_string(std::get<double>(a));
+                            else if (std::holds_alternative<bool>(a))
+                                sa = std::get<bool>(a) ? "true" : "false";
+                            // Chuyển b về string
+                            if (std::holds_alternative<std::string>(b))
+                                sb = std::get<std::string>(b);
+                            else if (std::holds_alternative<int64_t>(b))
+                                sb = std::to_string(std::get<int64_t>(b));
+                            else if (std::holds_alternative<double>(b))
+                                sb = std::to_string(std::get<double>(b));
+                            else if (std::holds_alternative<bool>(b))
+                                sb = std::get<bool>(b) ? "true" : "false";
+                            push(sa + sb);
+                            break;
                         }
-                        else if ((std::holds_alternative<int64_t>(a) || std::holds_alternative<double>(a)) &&
-                                 (std::holds_alternative<int64_t>(b) || std::holds_alternative<double>(b)))
+                        // --- KẾT THÚC HỖ TRỢ NỐI CHUỖI ---
                         {
-                            double av = std::holds_alternative<int64_t>(a) ? static_cast<double>(std::get<int64_t>(a)) : std::get<double>(a);
-                            double bv = std::holds_alternative<int64_t>(b) ? static_cast<double>(std::get<int64_t>(b)) : std::get<double>(b);
-                            switch (finstr.opcode)
+                            auto b = pop();
+                            auto a = pop();
+                            // --- Support int128/float128 if needed ---
+                            if (std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b))
                             {
-                            case OpCode::ADD:
-                                push(av + bv);
-                                break;
-                            case OpCode::SUB:
-                                push(av - bv);
-                                break;
-                            case OpCode::MUL:
-                                push(av * bv);
-                                break;
-                            case OpCode::DIV:
-                                push(av / bv);
-                                break;
-                            case OpCode::MOD:
-                                push(static_cast<int64_t>(av) % static_cast<int64_t>(bv));
-                                break;
-                            default:
-                                break;
+                                int64_t av = std::get<int64_t>(a);
+                                int64_t bv = std::get<int64_t>(b);
+                                switch (finstr.opcode)
+                                {
+                                case OpCode::ADD:
+                                    push(av + bv);
+                                    break;
+                                case OpCode::SUB:
+                                    push(av - bv);
+                                    break;
+                                case OpCode::MUL:
+                                    push(av * bv);
+                                    break;
+                                case OpCode::DIV:
+                                    if (bv == 0)
+                                    {
+                                        std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Division by zero (int)" << std::endl;
+                                        push(int64_t(0));
+                                    }
+                                    else
+                                    {
+                                        push(av / bv);
+                                    }
+                                    break;
+                                case OpCode::MOD:
+                                    if (bv == 0)
+                                    {
+                                        std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Modulo by zero (int)" << std::endl;
+                                        push(int64_t(0));
+                                    }
+                                    else
+                                    {
+                                        push(av % bv);
+                                    }
+                                    break;
+                                default:
+                                    break;
+                                }
                             }
-                        }
-                        // --- Support int128/float128 using boost if needed ---
-                        // else if (std::holds_alternative<int128_t>(a) && std::holds_alternative<int128_t>(b)) { ... }
-                        // else if (std::holds_alternative<float128_t>(a) && std::holds_alternative<float128_t>(b)) { ... }
-                        else
-                        {
-                            std::cerr << "VM: ADD/SUB/MUL/DIV/MOD only supports int/float" << std::endl;
+                            else if ((std::holds_alternative<int64_t>(a) || std::holds_alternative<double>(a)) &&
+                                     (std::holds_alternative<int64_t>(b) || std::holds_alternative<double>(b)))
+                            {
+                                double av = std::holds_alternative<int64_t>(a) ? static_cast<double>(std::get<int64_t>(a)) : std::get<double>(a);
+                                double bv = std::holds_alternative<int64_t>(b) ? static_cast<double>(std::get<int64_t>(b)) : std::get<double>(b);
+                                switch (finstr.opcode)
+                                {
+                                case OpCode::ADD:
+                                    push(av + bv);
+                                    break;
+                                case OpCode::SUB:
+                                    push(av - bv);
+                                    break;
+                                case OpCode::MUL:
+                                    push(av * bv);
+                                    break;
+                                case OpCode::DIV:
+                                    if (bv == 0.0)
+                                    {
+                                        std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Division by zero (float)" << std::endl;
+                                        push(0.0);
+                                    }
+                                    else
+                                    {
+                                        push(av / bv);
+                                    }
+                                    break;
+                                case OpCode::MOD:
+                                    if (bv == 0.0)
+                                    {
+                                        std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Modulo by zero (float)" << std::endl;
+                                        push(0.0);
+                                    }
+                                    else
+                                    {
+                                        push(static_cast<int64_t>(av) % static_cast<int64_t>(bv));
+                                    }
+                                    break;
+                                default:
+                                    break;
+                                }
+                            }
+                            // --- Support int128/float128 using boost if needed ---
+                            // else if (std::holds_alternative<int128_t>(a) && std::holds_alternative<int128_t>(b)) { ... }
+                            // else if (std::holds_alternative<float128_t>(a) && std::holds_alternative<float128_t>(b)) { ... }
+                            else
+                            {
+                                std::cerr << "VM: ADD/SUB/MUL/DIV/MOD only supports int/float" << std::endl;
+                            }
                         }
                         break;
                     }

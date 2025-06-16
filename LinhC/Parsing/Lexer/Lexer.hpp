@@ -139,6 +139,7 @@ namespace Linh
         int column_start;
 
         Token(TokenType type, std::string lexeme, LiteralValue literal, int line, int column_start);
+        Token() : type(TokenType::ERROR), lexeme(""), literal(std::monostate{}), line(0), column_start(0) {} // <--- Thêm dòng này
         std::string to_string() const;
     };
 

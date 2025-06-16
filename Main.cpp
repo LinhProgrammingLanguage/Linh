@@ -28,7 +28,7 @@ void runFile(const std::string &filename)
     {
         source += line + "\n";
     }
-    runSource(source);
+    runSource(source, nullptr, nullptr, nullptr);
 }
 
 Linh::BytecodeEmitter *g_main_emitter = nullptr; // Thêm dòng này

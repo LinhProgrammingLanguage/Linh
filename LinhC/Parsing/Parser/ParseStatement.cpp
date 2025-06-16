@@ -23,7 +23,7 @@ namespace Linh
             // std::cout << "PARSER_STMT: Found LBRACE as start of statement. Consuming it." << std::endl;
             consume(TokenType::LBRACE, "Mong đợi '{' để bắt đầu khối lệnh.");
             // previous() bây giờ là LBRACE, được truyền ngầm cho block()
-            return block();
+            return std::unique_ptr<AST::Stmt>(block().release());
         }
 
         if (match({TokenType::IF_KW}))
@@ -104,7 +104,7 @@ namespace Linh
             else_branch = statement(); // else_branch cũng có thể là block hoặc câu lệnh đơn
         }
         // std::cout << "PARSER_IF: Returning IfStmt." << std::endl;
-        return std::make_unique<AST::IfStmt>(std::move(keyword_if), std::move(condition), std::move(then_branch), std::move(else_branch));
+        return std::unique_ptr<AST::Stmt>(new AST::IfStmt(std::move(keyword_if), std::move(condition), std::move(then_branch), std::move(else_branch)));
     }
 
     AST::StmtPtr Parser::while_statement()
@@ -180,7 +180,7 @@ namespace Linh
         // }
         if (increment_expr)
         {
-            auto increment_as_stmt = std::make_unique<AST::ExpressionStmt>(std::move(increment_expr));
+            auto increment_as_stmt = std::unique_ptr<AST::Stmt>(new AST::ExpressionStmt(std::move(increment_expr)));
             if (AST::BlockStmt *body_as_block = dynamic_cast<AST::BlockStmt *>(body_stmt.get()))
             {
                 body_as_block->statements.push_back(std::move(increment_as_stmt));
@@ -191,7 +191,7 @@ namespace Linh
                 new_body_stmts.push_back(std::move(body_stmt));
                 new_body_stmts.push_back(std::move(increment_as_stmt));
                 Token dummy_brace(TokenType::LBRACE, "{", std::monostate{}, keyword_for.line, keyword_for.column_start);
-                body_stmt = std::make_unique<AST::BlockStmt>(std::move(new_body_stmts), dummy_brace);
+                body_stmt = std::unique_ptr<AST::Stmt>(new AST::BlockStmt(std::move(new_body_stmts), dummy_brace));
             }
         }
 
@@ -204,7 +204,7 @@ namespace Linh
             final_block_stmts.push_back(std::move(initializer_stmt));
             final_block_stmts.push_back(std::move(while_loop_stmt));
             Token dummy_brace(TokenType::LBRACE, "{", std::monostate{}, keyword_for.line, keyword_for.column_start);
-            return std::make_unique<AST::BlockStmt>(std::move(final_block_stmts), dummy_brace);
+            return std::unique_ptr<AST::Stmt>(new AST::BlockStmt(std::move(final_block_stmts), dummy_brace));
         }
         else
         {

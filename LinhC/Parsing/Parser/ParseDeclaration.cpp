@@ -10,7 +10,7 @@ namespace Linh
         if (!type_node)
         {
             Token uninit_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
-            return std::make_unique<AST::UninitLiteralExpr>(uninit_token);
+            return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_token));
         }
 
         if (const AST::BaseTypeNode *base_type = dynamic_cast<const AST::BaseTypeNode *>(type_node))
@@ -21,64 +21,64 @@ namespace Linh
             case TokenType::UINT_KW:
             {
                 Token zero_int_token(TokenType::INT, "0", static_cast<int64_t>(0), reference_token_for_pos.line, reference_token_for_pos.column_start);
-                return std::make_unique<AST::LiteralExpr>(zero_int_token.literal);
+                return std::unique_ptr<AST::Expr>(new AST::LiteralExpr(zero_int_token.literal));
             }
             case TokenType::FLOAT_KW:
             {
                 Token zero_float_token(TokenType::FLOAT_NUM, "0.0", 0.0, reference_token_for_pos.line, reference_token_for_pos.column_start);
-                return std::make_unique<AST::LiteralExpr>(zero_float_token.literal);
+                return std::unique_ptr<AST::Expr>(new AST::LiteralExpr(zero_float_token.literal));
             }
             case TokenType::STR_KW:
             {
                 Token empty_str_token(TokenType::STR, "\"\"", std::string(""), reference_token_for_pos.line, reference_token_for_pos.column_start);
-                return std::make_unique<AST::LiteralExpr>(empty_str_token.literal);
+                return std::unique_ptr<AST::Expr>(new AST::LiteralExpr(empty_str_token.literal));
             }
             case TokenType::BOOL_KW:
             {
                 Token false_token(TokenType::FALSE_KW, "false", false, reference_token_for_pos.line, reference_token_for_pos.column_start);
-                return std::make_unique<AST::LiteralExpr>(false_token.literal);
+                return std::unique_ptr<AST::Expr>(new AST::LiteralExpr(false_token.literal));
             }
             case TokenType::UNINIT_KW:
             {
                 Token uninit_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
-                return std::make_unique<AST::UninitLiteralExpr>(uninit_token);
+                return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_token));
             }
             case TokenType::VOID_KW:
                 throw error(base_type->type_keyword_token, "Cannot create zero value for type 'void'.");
             case TokenType::ANY_KW:
             {
                 Token uninit_any_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
-                return std::make_unique<AST::UninitLiteralExpr>(uninit_any_token);
+                return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_any_token));
             }
             default:
             { // Bao gồm IDENTIFIER
                 std::cerr << "PARSER_WARN: Cannot determine zero value for base type '" << base_type->type_keyword_token.lexeme << "' at parse time. Defaulting to uninit." << std::endl;
                 Token uninit_default_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
-                return std::make_unique<AST::UninitLiteralExpr>(uninit_default_token);
+                return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_default_token));
             }
             }
         }
         else if (dynamic_cast<const AST::SizedIntegerTypeNode *>(type_node))
         {
             Token zero_int_token(TokenType::INT, "0", static_cast<int64_t>(0), reference_token_for_pos.line, reference_token_for_pos.column_start);
-            return std::make_unique<AST::LiteralExpr>(zero_int_token.literal);
+            return std::unique_ptr<AST::Expr>(new AST::LiteralExpr(zero_int_token.literal));
         }
         else if (dynamic_cast<const AST::SizedFloatTypeNode *>(type_node))
         {
             Token zero_float_token(TokenType::FLOAT_NUM, "0.0", 0.0, reference_token_for_pos.line, reference_token_for_pos.column_start);
-            return std::make_unique<AST::LiteralExpr>(zero_float_token.literal);
+            return std::unique_ptr<AST::Expr>(new AST::LiteralExpr(zero_float_token.literal));
         }
         else if (dynamic_cast<const AST::MapTypeNode *>(type_node))
         {
             Token l_brace(TokenType::LBRACE, "{", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
             Token r_brace(TokenType::RBRACE, "}", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
-            return std::make_unique<AST::MapLiteralExpr>(l_brace, std::vector<AST::MapEntryNode>{}, r_brace);
+            return std::unique_ptr<AST::Expr>(new AST::MapLiteralExpr(l_brace, std::vector<AST::MapEntryNode>{}, r_brace));
         }
         else if (dynamic_cast<const AST::ArrayTypeNode *>(type_node))
         {
             Token l_bracket(TokenType::LBRACKET, "[", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
             Token r_bracket(TokenType::RBRACKET, "]", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
-            return std::make_unique<AST::ArrayLiteralExpr>(l_bracket, std::vector<AST::ExprPtr>{}, r_bracket);
+            return std::unique_ptr<AST::Expr>(new AST::ArrayLiteralExpr(l_bracket, std::vector<AST::ExprPtr>{}, r_bracket));
         }
         else if (const AST::UnionTypeNode *union_type = dynamic_cast<const AST::UnionTypeNode *>(type_node))
         {
@@ -90,22 +90,22 @@ namespace Linh
         }
 
         Token uninit_fallback_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
-        return std::make_unique<AST::UninitLiteralExpr>(uninit_fallback_token);
+        return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_fallback_token));
     }
 
     AST::StmtPtr Parser::declaration()
     {
         if (match({TokenType::VAR_KW, TokenType::VAS_KW, TokenType::CONST_KW}))
         {
-            return var_declaration(previous());
+            return std::unique_ptr<AST::Stmt>(var_declaration(previous()).release());
         }
         if (match({TokenType::FUNC_KW}))
         {
-            return function_declaration(previous());
+            return std::unique_ptr<AST::Stmt>(function_declaration(previous()).release());
         }
         if (match({TokenType::IMPORT_KW})) // <--- Thêm dòng này
         {
-            return import_statement();
+            return std::unique_ptr<AST::Stmt>(import_statement().release());
         }
         return statement();
     }
@@ -273,12 +273,12 @@ namespace Linh
 
         consume(TokenType::LBRACE, "Missing '{' before function body.");
         std::unique_ptr<AST::BlockStmt> body_block_ptr = block();
-        return std::make_unique<AST::FunctionDeclStmt>(
+        return std::unique_ptr<AST::Stmt>(new AST::FunctionDeclStmt(
             std::move(func_keyword),
             std::move(name_token),
             std::move(parameters_list),
             std::move(return_type_node),
-            std::move(body_block_ptr));
+            std::move(body_block_ptr)));
     }
 
     AST::StmtPtr Parser::import_statement()

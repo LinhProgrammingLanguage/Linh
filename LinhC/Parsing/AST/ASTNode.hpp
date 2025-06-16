@@ -13,6 +13,64 @@ namespace Linh
 {
     namespace AST
     {
+        // --- Forward declarations for statements and blocks ---
+        struct BlockStmt;
+        struct IfStmt;
+        struct WhileStmt;
+        struct DoWhileStmt;
+        struct FunctionDeclStmt;
+        struct ReturnStmt;
+        struct BreakStmt;
+        struct ContinueStmt;
+        struct SwitchStmt;
+        struct DeleteStmt;
+        struct ThrowStmt;
+        struct TryStmt;
+        struct ImportStmt;
+        struct PrintStmt;
+        struct ExpressionStmt;
+        struct VarDeclStmt;
+        struct CaseClause;
+        struct CatchClauseNode;
+        struct ArrayLiteralExpr;
+        struct MapLiteralExpr;
+        struct SubscriptExpr;
+        struct UninitLiteralExpr;
+        struct NewExpr;
+        struct ThisExpr;
+        struct GroupingExpr;
+        struct FuncParamNode;
+
+        struct Stmt
+        {
+            virtual ~Stmt() = default;
+            virtual void accept(class StmtVisitor *) = 0;
+        }; // Định nghĩa rỗng
+        class StmtVisitor
+        {
+        public:
+            virtual ~StmtVisitor() = default;
+            virtual void visitPrintStmt(PrintStmt *stmt) = 0;
+            virtual void visitExpressionStmt(ExpressionStmt *stmt) = 0;
+            virtual void visitVarDeclStmt(VarDeclStmt *stmt) = 0;
+            virtual void visitBlockStmt(BlockStmt *stmt) = 0;
+            virtual void visitIfStmt(IfStmt *stmt) = 0;
+            virtual void visitWhileStmt(WhileStmt *stmt) = 0;
+            virtual void visitDoWhileStmt(DoWhileStmt *stmt) = 0;
+            virtual void visitFunctionDeclStmt(FunctionDeclStmt *stmt) = 0;
+            virtual void visitReturnStmt(ReturnStmt *stmt) = 0;
+            virtual void visitBreakStmt(BreakStmt *stmt) = 0;
+            virtual void visitContinueStmt(ContinueStmt *stmt) = 0;
+            virtual void visitSwitchStmt(SwitchStmt *stmt) = 0;
+            virtual void visitDeleteStmt(DeleteStmt *stmt) = 0;
+            virtual void visitThrowStmt(ThrowStmt *stmt) = 0;
+            virtual void visitTryStmt(TryStmt *stmt) = 0;
+            virtual void visitImportStmt(ImportStmt *stmt) = 0;
+        }; // Định nghĩa rỗng
+        using StmtPtr = std::unique_ptr<Stmt>;
+        using StmtList = std::vector<StmtPtr>;
+        struct BlockStmt;
+
         // --- Type System Nodes (Giữ nguyên từ lần cập nhật trước) ---
         struct TypeNode;
         struct BaseTypeNode;
@@ -162,29 +220,43 @@ namespace Linh
         struct LiteralExpr : Expr
         {
             LiteralValue value;
-            LiteralExpr(LiteralValue val) : value(std::move(val)) {}
+            Token token; // Thêm trường này để lưu token gốc
+            LiteralExpr(LiteralValue val) : value(std::move(val)), token() {}
+            LiteralExpr(LiteralValue val, Token tok) : value(std::move(val)), token(std::move(tok)) {}
             std::any accept(ExprVisitor *visitor) override { return visitor->visitLiteralExpr(this); }
+            int getLine() const { return token.line; }
+            int getCol() const { return token.column_start; }
         };
+
         struct IdentifierExpr : Expr
         {
             Token name;
             IdentifierExpr(Token n) : name(std::move(n)) {}
             std::any accept(ExprVisitor *visitor) override { return visitor->visitIdentifierExpr(this); }
+            int getLine() const { return name.line; }
+            int getCol() const { return name.column_start; }
         };
+
         struct UnaryExpr : Expr
         {
             Token op;
             ExprPtr right;
             UnaryExpr(Token o, ExprPtr r) : op(std::move(o)), right(std::move(r)) {}
             std::any accept(ExprVisitor *visitor) override { return visitor->visitUnaryExpr(this); }
+            int getLine() const { return op.line; }
+            int getCol() const { return op.column_start; }
         };
+
         struct PostfixExpr : Expr
         {
             ExprPtr operand;
             Token op_token;
             PostfixExpr(ExprPtr left, Token op_tok) : operand(std::move(left)), op_token(std::move(op_tok)) {}
             std::any accept(ExprVisitor *visitor) override { return visitor->visitPostfixExpr(this); }
+            int getLine() const { return op_token.line; }
+            int getCol() const { return op_token.column_start; }
         };
+
         struct BinaryExpr : Expr
         {
             ExprPtr left;
@@ -192,7 +264,10 @@ namespace Linh
             ExprPtr right;
             BinaryExpr(ExprPtr l, Token o, ExprPtr r) : left(std::move(l)), op(std::move(o)), right(std::move(r)) {}
             std::any accept(ExprVisitor *visitor) override { return visitor->visitBinaryExpr(this); }
+            int getLine() const { return op.line; }
+            int getCol() const { return op.column_start; }
         };
+
         struct LogicalExpr : Expr
         {
             ExprPtr left;
@@ -200,20 +275,20 @@ namespace Linh
             ExprPtr right;
             LogicalExpr(ExprPtr l, Token o, ExprPtr r) : left(std::move(l)), op(std::move(o)), right(std::move(r)) {}
             std::any accept(ExprVisitor *visitor) override { return visitor->visitLogicalExpr(this); }
+            int getLine() const { return op.line; }
+            int getCol() const { return op.column_start; }
         };
-        struct GroupingExpr : Expr
-        {
-            ExprPtr expression;
-            GroupingExpr(ExprPtr expr) : expression(std::move(expr)) {}
-            std::any accept(ExprVisitor *visitor) override { return visitor->visitGroupingExpr(this); }
-        };
+
         struct AssignmentExpr : Expr
         {
             Token name;
-            ExprPtr value; // Sẽ cần cập nhật target của assignment sau này
+            ExprPtr value;
             AssignmentExpr(Token n, ExprPtr val) : name(std::move(n)), value(std::move(val)) {}
             std::any accept(ExprVisitor *visitor) override { return visitor->visitAssignmentExpr(this); }
+            int getLine() const { return name.line; }
+            int getCol() const { return name.column_start; }
         };
+
         struct CallExpr : Expr
         {
             ExprPtr callee;
@@ -221,127 +296,39 @@ namespace Linh
             std::vector<ExprPtr> arguments;
             CallExpr(ExprPtr callee_expr, Token p, std::vector<ExprPtr> args) : callee(std::move(callee_expr)), paren(std::move(p)), arguments(std::move(args)) {}
             std::any accept(ExprVisitor *visitor) override { return visitor->visitCallExpr(this); }
+            int getLine() const { return paren.line; }
+            int getCol() const { return paren.column_start; }
         };
-        struct UninitLiteralExpr : Expr
-        {
-            Token keyword;
-            UninitLiteralExpr(Token kw) : keyword(std::move(kw)) {}
-            std::any accept(ExprVisitor *visitor) override { return visitor->visitUninitLiteralExpr(this); }
-        };
-        struct NewExpr : Expr
-        {
-            Token keyword_new;
-            ExprPtr class_constructor_call;
-            NewExpr(Token kw, ExprPtr constructor_call) : keyword_new(std::move(kw)), class_constructor_call(std::move(constructor_call)) {}
-            std::any accept(ExprVisitor *visitor) override { return visitor->visitNewExpr(this); }
-        };
-        struct ThisExpr : Expr
-        {
-            Token keyword_this;
-            ThisExpr(Token kw) : keyword_this(std::move(kw)) {}
-            std::any accept(ExprVisitor *visitor) override { return visitor->visitThisExpr(this); }
-        };
-        struct ArrayLiteralExpr : Expr
-        {
-            Token l_bracket, r_bracket;
-            std::vector<ExprPtr> elements;
-            ArrayLiteralExpr(Token lb, std::vector<ExprPtr> elems, Token rb)
-                : l_bracket(std::move(lb)), elements(std::move(elems)), r_bracket(std::move(rb)) {}
-            std::any accept(ExprVisitor *visitor) override { return visitor->visitArrayLiteralExpr(this); }
-        };
-        struct MapEntryNode
-        {
-            ExprPtr key;
-            ExprPtr value;
-            Token colon_token;
-            MapEntryNode(ExprPtr k, Token colon, ExprPtr v)
-                : key(std::move(k)), colon_token(std::move(colon)), value(std::move(v)) {}
-        };
-        struct MapLiteralExpr : Expr
-        {
-            Token l_brace, r_brace;
-            std::vector<MapEntryNode> entries;
-            MapLiteralExpr(Token lb, std::vector<MapEntryNode> kvs, Token rb)
-                : l_brace(std::move(lb)), entries(std::move(kvs)), r_brace(std::move(rb)) {}
-            std::any accept(ExprVisitor *visitor) override { return visitor->visitMapLiteralExpr(this); }
-        };
-        struct SubscriptExpr : Expr // MỚI
-        {
-            ExprPtr object;
-            Token l_bracket;
-            ExprPtr index;
-            Token r_bracket;
-            SubscriptExpr(ExprPtr obj, Token lb, ExprPtr idx, Token rb)
-                : object(std::move(obj)), l_bracket(std::move(lb)), index(std::move(idx)), r_bracket(std::move(rb)) {}
-            std::any accept(ExprVisitor *visitor) override { return visitor->visitSubscriptExpr(this); }
-        };
-        struct InterpolatedStringExpr : Expr // MỚI
+
+        struct InterpolatedStringExpr : Expr
         {
             std::vector<std::variant<std::string, ExprPtr>> parts;
-            InterpolatedStringExpr(std::vector<std::variant<std::string, ExprPtr>> p)
-                : parts(std::move(p)) {}
+            Token first_token; // Thêm trường này để lưu vị trí
+            InterpolatedStringExpr(std::vector<std::variant<std::string, ExprPtr>> p, Token tok = Token()) : parts(std::move(p)), first_token(tok) {}
             std::any accept(ExprVisitor *visitor) override { return visitor->visitInterpolatedStringExpr(this); }
+            int getLine() const { return first_token.line; }
+            int getCol() const { return first_token.column_start; }
         };
 
-        // --- Stmt Nodes (Giữ nguyên từ lần cập nhật trước) ---
-        struct ExpressionStmt;
-        struct PrintStmt;
-        struct VarDeclStmt;
-        struct BlockStmt;
-        struct IfStmt;
-        struct WhileStmt;
-        struct FunctionDeclStmt;
-        struct ReturnStmt;
-        struct BreakStmt;
-        struct ContinueStmt;
-        struct SwitchStmt;
-        struct DoWhileStmt;
-        struct DeleteStmt;
-        struct ThrowStmt;
-        struct TryStmt;
-        struct ImportStmt; // <--- Thêm dòng này
-
-        class StmtVisitor
-        {
-        public:
-            virtual ~StmtVisitor() = default;
-            virtual void visitExpressionStmt(ExpressionStmt *stmt) = 0;
-            virtual void visitPrintStmt(PrintStmt *stmt) = 0;
-            virtual void visitVarDeclStmt(VarDeclStmt *stmt) = 0;
-            virtual void visitBlockStmt(BlockStmt *stmt) = 0;
-            virtual void visitIfStmt(IfStmt *stmt) = 0;
-            virtual void visitWhileStmt(WhileStmt *stmt) = 0;
-            virtual void visitFunctionDeclStmt(FunctionDeclStmt *stmt) = 0;
-            virtual void visitReturnStmt(ReturnStmt *stmt) = 0;
-            virtual void visitBreakStmt(BreakStmt *stmt) = 0;
-            virtual void visitContinueStmt(ContinueStmt *stmt) = 0;
-            virtual void visitSwitchStmt(SwitchStmt *stmt) = 0;
-            virtual void visitDoWhileStmt(DoWhileStmt *stmt) = 0;
-            virtual void visitDeleteStmt(DeleteStmt *stmt) = 0;
-            virtual void visitThrowStmt(ThrowStmt *stmt) = 0;
-            virtual void visitTryStmt(TryStmt *stmt) = 0;
-            virtual void visitImportStmt(ImportStmt *stmt) = 0; // <--- Thêm dòng này
-        };
-        struct Stmt
-        {
-            virtual ~Stmt() = default;
-            virtual void accept(StmtVisitor *visitor) = 0;
-        };
-        using StmtPtr = std::unique_ptr<Stmt>;
-        using StmtList = std::vector<StmtPtr>;
-
-        struct ExpressionStmt : Stmt
-        {
-            ExprPtr expression;
-            ExpressionStmt(ExprPtr expr) : expression(std::move(expr)) {}
-            void accept(StmtVisitor *visitor) override { visitor->visitExpressionStmt(this); }
-        };
+        // --- Statement nodes ---
         struct PrintStmt : Stmt
         {
             Token keyword;
             ExprPtr expression;
             PrintStmt(Token kw, ExprPtr expr) : keyword(std::move(kw)), expression(std::move(expr)) {}
             void accept(StmtVisitor *visitor) override { visitor->visitPrintStmt(this); }
+            int getLine() const { return keyword.line; }
+            int getCol() const { return keyword.column_start; }
+        };
+
+        struct ExpressionStmt : Stmt
+        {
+            ExprPtr expression;
+            Token first_token; // Thêm trường này nếu muốn lưu vị trí
+            ExpressionStmt(ExprPtr expr, Token tok = Token()) : expression(std::move(expr)), first_token(tok) {}
+            void accept(StmtVisitor *visitor) override { visitor->visitExpressionStmt(this); }
+            int getLine() const { return first_token.line; }
+            int getCol() const { return first_token.column_start; }
         };
 
         struct VarDeclStmt : Stmt
@@ -355,33 +342,10 @@ namespace Linh
                 : keyword(std::move(kw)), name(std::move(n)), declared_type(std::move(type)), initializer(std::move(init)) {}
 
             void accept(StmtVisitor *visitor) override { visitor->visitVarDeclStmt(this); }
+            int getLine() const { return keyword.line; }
+            int getCol() const { return keyword.column_start; }
         };
 
-        struct FuncParamNode
-        {
-            Token name;
-            std::optional<TypeNodePtr> type;
-
-            FuncParamNode(Token param_name, std::optional<TypeNodePtr> param_type = std::nullopt)
-                : name(std::move(param_name)), type(std::move(param_type)) {}
-        };
-
-        struct BlockStmt : Stmt
-        {
-            StmtList statements;
-            Token opening_brace;
-            BlockStmt(StmtList stmts, Token brace) : statements(std::move(stmts)), opening_brace(std::move(brace)) {}
-            void accept(StmtVisitor *visitor) override { visitor->visitBlockStmt(this); }
-        };
-        struct IfStmt : Stmt
-        {
-            Token keyword_if;
-            ExprPtr condition;
-            StmtPtr then_branch;
-            StmtPtr else_branch;
-            IfStmt(Token kw, ExprPtr cond, StmtPtr then_b, StmtPtr else_b) : keyword_if(std::move(kw)), condition(std::move(cond)), then_branch(std::move(then_b)), else_branch(std::move(else_b)) {}
-            void accept(StmtVisitor *visitor) override { visitor->visitIfStmt(this); }
-        };
         struct WhileStmt : Stmt
         {
             Token keyword_while;
@@ -389,7 +353,10 @@ namespace Linh
             StmtPtr body;
             WhileStmt(Token kw, ExprPtr cond, StmtPtr b) : keyword_while(std::move(kw)), condition(std::move(cond)), body(std::move(b)) {}
             void accept(StmtVisitor *visitor) override { visitor->visitWhileStmt(this); }
+            int getLine() const { return keyword_while.line; }
+            int getCol() const { return keyword_while.column_start; }
         };
+
         struct DoWhileStmt : Stmt
         {
             Token keyword_do;
@@ -398,21 +365,8 @@ namespace Linh
             ExprPtr condition;
             DoWhileStmt(Token kw_do, StmtPtr b, Token kw_while, ExprPtr cond) : keyword_do(std::move(kw_do)), body(std::move(b)), keyword_while(std::move(kw_while)), condition(std::move(cond)) {}
             void accept(StmtVisitor *visitor) override { visitor->visitDoWhileStmt(this); }
-        };
-
-        struct FunctionDeclStmt : Stmt
-        {
-            Token keyword_func;
-            Token name;
-            std::vector<FuncParamNode> params;
-            std::optional<TypeNodePtr> return_type;
-            std::unique_ptr<BlockStmt> body;
-
-            FunctionDeclStmt(Token kw, Token n, std::vector<FuncParamNode> p_nodes,
-                             std::optional<TypeNodePtr> ret_type, std::unique_ptr<BlockStmt> b)
-                : keyword_func(std::move(kw)), name(std::move(n)), params(std::move(p_nodes)),
-                  return_type(std::move(ret_type)), body(std::move(b)) {}
-            void accept(StmtVisitor *visitor) override { visitor->visitFunctionDeclStmt(this); }
+            int getLine() const { return keyword_do.line; }
+            int getCol() const { return keyword_do.column_start; }
         };
 
         struct ReturnStmt : Stmt
@@ -421,7 +375,10 @@ namespace Linh
             ExprPtr value;
             ReturnStmt(Token kw, ExprPtr val) : keyword_return(std::move(kw)), value(std::move(val)) {}
             void accept(StmtVisitor *visitor) override { visitor->visitReturnStmt(this); }
+            int getLine() const { return keyword_return.line; }
+            int getCol() const { return keyword_return.column_start; }
         };
+
         struct BreakStmt : Stmt
         {
             Token keyword;
@@ -512,6 +469,116 @@ namespace Linh
                 : import_kw(std::move(import_kw)), names(std::move(names)), from_kw(std::move(from_kw)), module_name(std::move(module_name)), semicolon(std::move(semicolon)) {}
             // Đơn giản hóa: names rỗng và from_kw.type == END_OF_FILE nếu chỉ import module
             void accept(StmtVisitor *visitor) override { visitor->visitImportStmt(this); }
+        };
+
+        // --- MapEntryNode definition for MapLiteralExpr ---
+        struct MapEntryNode
+        {
+            ExprPtr key;
+            Token colon_token;
+            ExprPtr value;
+            MapEntryNode(ExprPtr k, Token colon, ExprPtr v)
+                : key(std::move(k)), colon_token(std::move(colon)), value(std::move(v)) {}
+        };
+
+        // --- Definitions for all AST nodes (add after forward declarations) ---
+
+        struct BlockStmt : Stmt
+        {
+            StmtList statements;
+            Token opening_brace;
+            BlockStmt(StmtList stmts, Token brace) : statements(std::move(stmts)), opening_brace(std::move(brace)) {}
+            void accept(StmtVisitor *visitor) override { visitor->visitBlockStmt(this); }
+        };
+
+        struct IfStmt : Stmt
+        {
+            Token keyword_if;
+            ExprPtr condition;
+            StmtPtr then_branch;
+            StmtPtr else_branch;
+            IfStmt(Token kw, ExprPtr cond, StmtPtr then_b, StmtPtr else_b)
+                : keyword_if(std::move(kw)), condition(std::move(cond)), then_branch(std::move(then_b)), else_branch(std::move(else_b)) {}
+            void accept(StmtVisitor *visitor) override { visitor->visitIfStmt(this); }
+        };
+
+        struct UninitLiteralExpr : Expr
+        {
+            Token keyword;
+            UninitLiteralExpr(Token kw) : keyword(std::move(kw)) {}
+            std::any accept(ExprVisitor *visitor) override { return visitor->visitUninitLiteralExpr(this); }
+        };
+
+        struct NewExpr : Expr
+        {
+            Token keyword_new;
+            ExprPtr class_constructor_call;
+            NewExpr(Token kw, ExprPtr call) : keyword_new(std::move(kw)), class_constructor_call(std::move(call)) {}
+            std::any accept(ExprVisitor *visitor) override { return visitor->visitNewExpr(this); }
+        };
+
+        struct ThisExpr : Expr
+        {
+            Token keyword_this;
+            ThisExpr(Token kw) : keyword_this(std::move(kw)) {}
+            std::any accept(ExprVisitor *visitor) override { return visitor->visitThisExpr(this); }
+        };
+
+        struct GroupingExpr : Expr
+        {
+            ExprPtr expression;
+            GroupingExpr(ExprPtr expr) : expression(std::move(expr)) {}
+            std::any accept(ExprVisitor *visitor) override { return visitor->visitGroupingExpr(this); }
+        };
+
+        struct ArrayLiteralExpr : Expr
+        {
+            Token l_bracket;
+            std::vector<ExprPtr> elements;
+            Token r_bracket;
+            ArrayLiteralExpr(Token l, std::vector<ExprPtr> elems, Token r)
+                : l_bracket(std::move(l)), elements(std::move(elems)), r_bracket(std::move(r)) {}
+            std::any accept(ExprVisitor *visitor) override { return visitor->visitArrayLiteralExpr(this); }
+        };
+
+        struct MapLiteralExpr : Expr
+        {
+            Token l_brace;
+            std::vector<MapEntryNode> entries;
+            Token r_brace;
+            MapLiteralExpr(Token l, std::vector<MapEntryNode> ents, Token r)
+                : l_brace(std::move(l)), entries(std::move(ents)), r_brace(std::move(r)) {}
+            std::any accept(ExprVisitor *visitor) override { return visitor->visitMapLiteralExpr(this); }
+        };
+
+        struct SubscriptExpr : Expr
+        {
+            ExprPtr object;
+            Token l_bracket_token;
+            ExprPtr index;
+            Token r_bracket_token;
+            SubscriptExpr(ExprPtr obj, Token l_br, ExprPtr idx, Token r_br)
+                : object(std::move(obj)), l_bracket_token(std::move(l_br)), index(std::move(idx)), r_bracket_token(std::move(r_br)) {}
+            std::any accept(ExprVisitor *visitor) override { return visitor->visitSubscriptExpr(this); }
+        };
+
+        struct FuncParamNode
+        {
+            Token name;
+            std::optional<TypeNodePtr> type;
+            FuncParamNode(Token n, std::optional<TypeNodePtr> t) : name(std::move(n)), type(std::move(t)) {}
+        };
+
+        struct FunctionDeclStmt : Stmt
+        {
+            Token keyword_func;
+            Token name;
+            std::vector<FuncParamNode> params;
+            std::optional<TypeNodePtr> return_type;
+            std::unique_ptr<BlockStmt> body;
+            FunctionDeclStmt(Token kw, Token n, std::vector<FuncParamNode> p, std::optional<TypeNodePtr> ret, std::unique_ptr<BlockStmt> b)
+                : keyword_func(std::move(kw)), name(std::move(n)), params(std::move(p)), return_type(std::move(ret)), body(std::move(b)) {}
+            void accept(StmtVisitor *visitor) override { visitor->visitFunctionDeclStmt(this); }
         };
 
     } // namespace AST

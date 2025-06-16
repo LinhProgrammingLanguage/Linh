@@ -63,7 +63,10 @@ namespace Linh
     {
         OpCode opcode;
         BytecodeValue operand;
-        Instruction(OpCode op, BytecodeValue val = {}) : opcode(op), operand(std::move(val)) {}
+        int line = 0; // <--- Thêm dòng này
+        int col = 0;  // <--- Thêm dòng này
+        Instruction(OpCode op, BytecodeValue val = {}, int l = 0, int c = 0)
+            : opcode(op), operand(std::move(val)), line(l), col(c) {}
     };
 
     using BytecodeChunk = std::vector<Instruction>;
