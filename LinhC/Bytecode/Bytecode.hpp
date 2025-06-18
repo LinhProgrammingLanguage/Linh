@@ -17,6 +17,7 @@ namespace Linh
         PUSH_BOOL,
         POP,
         SWAP, // <--- Add this for unary minus
+        DUP,  // <--- Thêm dòng này cho switch-case
 
         // Arithmetic
         ADD,

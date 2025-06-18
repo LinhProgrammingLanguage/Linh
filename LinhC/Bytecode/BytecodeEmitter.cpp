@@ -297,7 +297,111 @@ namespace Linh
     }
     void BytecodeEmitter::visitBreakStmt(AST::BreakStmt *) {}
     void BytecodeEmitter::visitContinueStmt(AST::ContinueStmt *) {}
-    void BytecodeEmitter::visitSwitchStmt(AST::SwitchStmt *) {}
+    void BytecodeEmitter::visitSwitchStmt(AST::SwitchStmt *stmt)
+    {
+        // --- Sinh bytecode cho switch-case ---
+        if (stmt->expression_to_switch_on)
+            stmt->expression_to_switch_on->accept(this);
+
+        size_t case_count = stmt->cases.size();
+        std::vector<size_t> case_jump_addrs(case_count, 0);
+        std::vector<size_t> case_body_addrs(case_count, 0);
+        size_t default_case_idx = size_t(-1);
+
+        // Để sửa JMP (break) sau khi biết địa chỉ kết thúc switch
+        std::vector<size_t> break_jmp_addrs;
+
+        // 2. Sinh code kiểm tra từng case
+        for (size_t i = 0; i < case_count; ++i)
+        {
+            const auto &case_clause = stmt->cases[i];
+            if (case_clause.is_default)
+            {
+                default_case_idx = i;
+                continue;
+            }
+            emit_instr(OpCode::DUP);
+            if (case_clause.case_value.has_value() && case_clause.case_value.value())
+                case_clause.case_value.value()->accept(this);
+            else
+                emit_instr(OpCode::PUSH_INT, 0);
+
+            emit_instr(OpCode::EQ);
+            size_t jmp_if_true_addr = chunk.size();
+            emit_instr(OpCode::JMP_IF_TRUE, int64_t(-1));
+            case_jump_addrs[i] = jmp_if_true_addr;
+            // Không sinh POP ở đây!
+        }
+
+        size_t jmp_default_addr = chunk.size();
+        emit_instr(OpCode::JMP, int64_t(-1));
+
+        // 3. Sinh code cho từng case body
+        for (size_t i = 0; i < case_count; ++i)
+        {
+            case_body_addrs[i] = chunk.size();
+            if (!stmt->cases[i].is_default)
+                chunk[case_jump_addrs[i]].operand = int64_t(case_body_addrs[i]);
+            // Chỉ pop switch_value khi thực sự vào case body
+            emit_instr(OpCode::POP);
+
+            // Sinh code cho các statement trong case
+            for (const auto &s : stmt->cases[i].statements)
+            {
+                if (s)
+                {
+                    // Nếu là BreakStmt thì sinh JMP và lưu lại vị trí để sửa sau
+                    if (dynamic_cast<AST::BreakStmt *>(s.get()))
+                    {
+                        size_t break_jmp_addr = chunk.size();
+                        emit_instr(OpCode::JMP, int64_t(-1));
+                        break_jmp_addrs.push_back(break_jmp_addr);
+                        // Sau break thì không sinh code cho các statement tiếp theo trong case
+                        break;
+                    }
+                    s->accept(this);
+                }
+            }
+        }
+
+        // 4. Default case
+        size_t default_addr = chunk.size();
+        if (default_case_idx != size_t(-1))
+        {
+            chunk[jmp_default_addr].operand = int64_t(default_addr);
+            // Khi vào default, pop switch_value
+            emit_instr(OpCode::POP);
+            for (const auto &s : stmt->cases[default_case_idx].statements)
+            {
+                if (s)
+                {
+                    if (dynamic_cast<AST::BreakStmt *>(s.get()))
+                    {
+                        size_t break_jmp_addr = chunk.size();
+                        emit_instr(OpCode::JMP, int64_t(-1));
+                        break_jmp_addrs.push_back(break_jmp_addr);
+                        break;
+                    }
+                    s->accept(this);
+                }
+            }
+        }
+        else
+        {
+            chunk[jmp_default_addr].operand = int64_t(default_addr);
+            emit_instr(OpCode::POP);
+        }
+
+        // Địa chỉ kết thúc switch
+        size_t end_switch_addr = chunk.size();
+
+        // Sửa lại tất cả JMP (break) để nhảy ra ngoài switch
+        for (size_t addr : break_jmp_addrs)
+        {
+            chunk[addr].operand = int64_t(end_switch_addr);
+        }
+    }
+
     void BytecodeEmitter::visitDeleteStmt(AST::DeleteStmt *) {}
     void BytecodeEmitter::visitThrowStmt(AST::ThrowStmt *) {}
     void BytecodeEmitter::visitTryStmt(AST::TryStmt *stmt)

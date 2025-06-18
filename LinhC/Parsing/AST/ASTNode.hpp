@@ -384,12 +384,16 @@ namespace Linh
             Token keyword;
             BreakStmt(Token kw) : keyword(std::move(kw)) {}
             void accept(StmtVisitor *visitor) override { visitor->visitBreakStmt(this); }
+            int getLine() const { return keyword.line; }
+            int getCol() const { return keyword.column_start; }
         };
         struct ContinueStmt : Stmt
         {
             Token keyword;
             ContinueStmt(Token kw) : keyword(std::move(kw)) {}
             void accept(StmtVisitor *visitor) override { visitor->visitContinueStmt(this); }
+            int getLine() const { return keyword.line; }
+            int getCol() const { return keyword.column_start; }
         };
 
         struct CaseClause

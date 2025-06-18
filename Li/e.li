@@ -1,2 +1,30 @@
-vas a = input("Enter a value for a: ");
-print("a: &{a}");
+vas ngayTrongTuan = 2;
+vas tenNgay : str;
+
+switch (ngayTrongTuan) {
+  case 1:
+    tenNgay = "Chủ Nhật";
+    break;
+  case 2:
+    tenNgay = "Thứ Hai";
+    break;
+  case 3:
+    tenNgay = "Thứ Ba";
+    break;
+  case 4:
+    tenNgay = "Thứ Tư";
+    break;
+  case 5:
+    tenNgay = "Thứ Năm";
+    break;
+  case 6:
+    tenNgay = "Thứ Sáu";
+    break;
+  case 7:
+    tenNgay = "Thứ Bảy";
+    break;
+  default:
+    tenNgay = "Không phải ngày hợp lệ";
+}
+
+print("Ngày trong tuần là: " + tenNgay);

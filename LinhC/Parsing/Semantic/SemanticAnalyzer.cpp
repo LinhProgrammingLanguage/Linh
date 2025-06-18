@@ -397,44 +397,46 @@ namespace Linh
         }
         void SemanticAnalyzer::visitBreakStmt(AST::BreakStmt *stmt)
         {
-            // Kiểm tra break ngoài vòng lặp
-            bool in_loop = false;
+            // Kiểm tra break ngoài vòng lặp hoặc switch
+            bool in_loop_or_switch = false;
             for (auto it = var_scopes.rbegin(); it != var_scopes.rend(); ++it)
             {
-                if (it->count("__loop__"))
+                if (it->count("__loop__") || it->count("__switch__"))
                 {
-                    in_loop = true;
+                    in_loop_or_switch = true;
                     break;
                 }
             }
-            if (!in_loop)
+            if (!in_loop_or_switch)
             {
-                // Sửa lại: dùng stmt->keyword thay vì stmt->token
-                errors.emplace_back("'break' statement not inside a loop.", stmt->keyword.line, stmt->keyword.column_start);
+                errors.emplace_back("'break' statement not inside a loop or switch.", stmt->getLine(), stmt->getCol());
             }
         }
         void SemanticAnalyzer::visitContinueStmt(AST::ContinueStmt *stmt)
         {
-            // Kiểm tra continue ngoài vòng lặp
-            bool in_loop = false;
+            // Kiểm tra continue ngoài vòng lặp hoặc switch
+            bool in_loop_or_switch = false;
             for (auto it = var_scopes.rbegin(); it != var_scopes.rend(); ++it)
             {
-                if (it->count("__loop__"))
+                if (it->count("__loop__") || it->count("__switch__"))
                 {
-                    in_loop = true;
+                    in_loop_or_switch = true;
                     break;
                 }
             }
-            if (!in_loop)
+            if (!in_loop_or_switch)
             {
-                // Sửa lại: dùng stmt->keyword thay vì stmt->token
-                errors.emplace_back("'continue' statement not inside a loop.", stmt->keyword.line, stmt->keyword.column_start);
+                errors.emplace_back("'continue' statement not inside a loop or switch.", stmt->getLine(), stmt->getCol());
             }
         }
         void SemanticAnalyzer::visitSwitchStmt(AST::SwitchStmt *stmt)
         {
             if (stmt->expression_to_switch_on)
                 stmt->expression_to_switch_on->accept(this);
+
+            // Đánh dấu scope là trong switch
+            begin_scope();
+            var_scopes.back()["__switch__"] = true;
             for (const auto &c : stmt->cases)
             {
                 for (const auto &s : c.statements)
@@ -443,6 +445,7 @@ namespace Linh
                         s->accept(this);
                 }
             }
+            end_scope();
         }
         void SemanticAnalyzer::visitDeleteStmt(AST::DeleteStmt *stmt)
         {
@@ -600,11 +603,13 @@ namespace Linh
                             if (auto litl = dynamic_cast<AST::LiteralExpr *>(bin->left.get()))
                                 left_type = get_linh_literal_type(litl);
                             else if (auto idl = dynamic_cast<AST::IdentifierExpr *>(bin->left.get()))
-                                if (var_types.count(idl->name.lexeme)) left_type = var_types[idl->name.lexeme];
+                                if (var_types.count(idl->name.lexeme))
+                                    left_type = var_types[idl->name.lexeme];
                             if (auto litr = dynamic_cast<AST::LiteralExpr *>(bin->right.get()))
                                 right_type = get_linh_literal_type(litr);
                             else if (auto idr = dynamic_cast<AST::IdentifierExpr *>(bin->right.get()))
-                                if (var_types.count(idr->name.lexeme)) right_type = var_types[idr->name.lexeme];
+                                if (var_types.count(idr->name.lexeme))
+                                    right_type = var_types[idr->name.lexeme];
                             // Ưu tiên lấy kiểu giống old_type nếu có
                             if (left_type == old_type)
                                 new_type = left_type;
@@ -649,11 +654,13 @@ namespace Linh
                             if (auto litl = dynamic_cast<AST::LiteralExpr *>(bin->left.get()))
                                 left_type = get_linh_literal_type(litl);
                             else if (auto idl = dynamic_cast<AST::IdentifierExpr *>(bin->left.get()))
-                                if (var_types.count(idl->name.lexeme)) left_type = var_types[idl->name.lexeme];
+                                if (var_types.count(idl->name.lexeme))
+                                    left_type = var_types[idl->name.lexeme];
                             if (auto litr = dynamic_cast<AST::LiteralExpr *>(bin->right.get()))
                                 right_type = get_linh_literal_type(litr);
                             else if (auto idr = dynamic_cast<AST::IdentifierExpr *>(bin->right.get()))
-                                if (var_types.count(idr->name.lexeme)) right_type = var_types[idr->name.lexeme];
+                                if (var_types.count(idr->name.lexeme))
+                                    right_type = var_types[idr->name.lexeme];
                             if (!left_type.empty())
                                 new_type = left_type;
                             else if (!right_type.empty())
