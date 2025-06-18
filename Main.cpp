@@ -45,11 +45,25 @@ void runSource(const std::string &source_code,
     std::vector<Linh::Token> tokens = lexer.scan_tokens();
     Linh::Parser parser(tokens);
     Linh::AST::StmtList ast = parser.parse();
+    if (parser.had_error())
+    {
+        std::cerr << "Lỗi cú pháp, dừng thực thi." << std::endl;
+        return;
+    }
 
     Linh::BytecodeEmitter emitter;
     g_main_emitter = &emitter; // Đặt emitter chính trước khi semantic để import có thể merge
     Linh::Semantic::SemanticAnalyzer sema;
     sema.analyze(ast);
+    if (!sema.errors.empty())
+    {
+        for (const auto &err : sema.errors)
+        {
+            std::cerr << "[SemanticError] Line " << err.line << ", Col " << err.column << ": " << err.message << std::endl;
+        }
+        std::cerr << "Có lỗi semantic, dừng thực thi." << std::endl;
+        return;
+    }
     emitter.emit(ast);
     g_main_emitter = nullptr; // Đặt lại sau khi xong
 

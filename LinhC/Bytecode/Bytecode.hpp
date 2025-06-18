@@ -3,6 +3,7 @@
 #include <string>
 #include <variant>
 #include <cstdint>
+#include <tuple>
 
 namespace Linh
 {
@@ -52,12 +53,22 @@ namespace Linh
 
         // Special
         PRINT,
-        INPUT,  // <--- Add this for input
-        TYPEOF, // <--- Thêm dòng này
-        HALT
+        INPUT,
+        TYPEOF,
+        HALT,
+
+        // --- Thêm cho try-catch-finally ---
+        TRY,
+        END_TRY
     };
 
-    using BytecodeValue = std::variant<int64_t, double, std::string, bool>;
+    using BytecodeValue = std::variant<
+        int64_t,
+        double,
+        std::string,
+        bool,
+        std::tuple<int64_t, int64_t, int64_t, std::string> // <--- Thêm dòng này
+        >;
 
     struct Instruction
     {

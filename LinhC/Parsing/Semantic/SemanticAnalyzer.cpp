@@ -574,10 +574,62 @@ namespace Linh
                 {
                     errors.emplace_back("Cannot assign to '" + name + "' because it is declared as 'const'.", expr->name.line, expr->name.column_start);
                 }
-                // Kiểm tra kiểu khi gán lại cho vas/var nếu có thể xác định kiểu
-                if ((var_kinds.count(name) && (var_kinds[name] == "vas" || var_kinds[name] == "var")) && var_types.count(name))
+                // Không cho phép đổi kiểu cho vas
+                else if (var_kinds.count(name) && var_kinds[name] == "vas" && var_types.count(name))
                 {
                     std::string old_type = var_types[name];
+                    std::string new_type;
+                    // Nếu là literal thì lấy kiểu như cũ
+                    if (expr->value)
+                    {
+                        if (auto lit = dynamic_cast<AST::LiteralExpr *>(expr->value.get()))
+                        {
+                            new_type = get_linh_literal_type(lit);
+                        }
+                        else if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->value.get()))
+                        {
+                            // Nếu gán từ biến khác, lấy kiểu của biến đó nếu có
+                            std::string rhs_name = id->name.lexeme;
+                            if (var_types.count(rhs_name))
+                                new_type = var_types[rhs_name];
+                        }
+                        else if (auto bin = dynamic_cast<AST::BinaryExpr *>(expr->value.get()))
+                        {
+                            // Nếu là biểu thức nhị phân, thử lấy kiểu của vế trái hoặc phải nếu là literal/identifier
+                            std::string left_type, right_type;
+                            if (auto litl = dynamic_cast<AST::LiteralExpr *>(bin->left.get()))
+                                left_type = get_linh_literal_type(litl);
+                            else if (auto idl = dynamic_cast<AST::IdentifierExpr *>(bin->left.get()))
+                                if (var_types.count(idl->name.lexeme)) left_type = var_types[idl->name.lexeme];
+                            if (auto litr = dynamic_cast<AST::LiteralExpr *>(bin->right.get()))
+                                right_type = get_linh_literal_type(litr);
+                            else if (auto idr = dynamic_cast<AST::IdentifierExpr *>(bin->right.get()))
+                                if (var_types.count(idr->name.lexeme)) right_type = var_types[idr->name.lexeme];
+                            // Ưu tiên lấy kiểu giống old_type nếu có
+                            if (left_type == old_type)
+                                new_type = left_type;
+                            else if (right_type == old_type)
+                                new_type = right_type;
+                            else if (!left_type.empty())
+                                new_type = left_type;
+                            else if (!right_type.empty())
+                                new_type = right_type;
+                        }
+                        // Có thể mở rộng cho các loại biểu thức khác nếu cần
+                    }
+                    if (!new_type.empty() && !old_type.empty() && new_type != old_type)
+                    {
+                        errors.emplace_back("Cannot change type of 'vas' variable '" + name + "' from '" + old_type + "' to '" + new_type + "'.", expr->name.line, expr->name.column_start);
+                    }
+                    // Nếu không xác định được kiểu mới (biểu thức phức tạp), không cho phép đổi kiểu
+                    if (new_type.empty() && expr->value)
+                    {
+                        errors.emplace_back("Cannot assign non-literal or unknown type to 'vas' variable '" + name + "'.", expr->name.line, expr->name.column_start);
+                    }
+                }
+                // Nếu là var thì cho phép đổi kiểu (cập nhật lại var_types)
+                else if (var_kinds.count(name) && var_kinds[name] == "var" && var_types.count(name))
+                {
                     std::string new_type;
                     if (expr->value)
                     {
@@ -585,20 +637,34 @@ namespace Linh
                         {
                             new_type = get_linh_literal_type(lit);
                         }
+                        else if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->value.get()))
+                        {
+                            std::string rhs_name = id->name.lexeme;
+                            if (var_types.count(rhs_name))
+                                new_type = var_types[rhs_name];
+                        }
+                        else if (auto bin = dynamic_cast<AST::BinaryExpr *>(expr->value.get()))
+                        {
+                            std::string left_type, right_type;
+                            if (auto litl = dynamic_cast<AST::LiteralExpr *>(bin->left.get()))
+                                left_type = get_linh_literal_type(litl);
+                            else if (auto idl = dynamic_cast<AST::IdentifierExpr *>(bin->left.get()))
+                                if (var_types.count(idl->name.lexeme)) left_type = var_types[idl->name.lexeme];
+                            if (auto litr = dynamic_cast<AST::LiteralExpr *>(bin->right.get()))
+                                right_type = get_linh_literal_type(litr);
+                            else if (auto idr = dynamic_cast<AST::IdentifierExpr *>(bin->right.get()))
+                                if (var_types.count(idr->name.lexeme)) right_type = var_types[idr->name.lexeme];
+                            if (!left_type.empty())
+                                new_type = left_type;
+                            else if (!right_type.empty())
+                                new_type = right_type;
+                        }
                     }
-                    if (!new_type.empty() && !old_type.empty() && new_type != old_type)
+                    if (!new_type.empty())
                     {
-                        if (var_kinds[name] == "vas")
-                        {
-                            errors.emplace_back("Cannot change type of 'vas' variable '" + name + "' from '" + old_type + "' to '" + new_type + "'.", expr->name.line, expr->name.column_start);
-                        }
-                        else if (var_kinds[name] == "var")
-                        {
-                            var_types[name] = new_type; // cập nhật kiểu mới cho var
-                        }
+                        var_types[name] = new_type;
                     }
                 }
-
                 // --- Cắt chuỗi khi gán lại cho biến kiểu str<index> ---
                 if (var_types.count(name) && var_types[name] == "str" && var_str_limit.count(name))
                 {

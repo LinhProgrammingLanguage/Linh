@@ -1,0 +1,15 @@
+vas a = 2;
+vas b = 0;
+try {
+    print("-------Start of the program-------");
+    print("a: &{a}, b: &{b}");
+    print(a / b);
+    print("-------End of the program-------");
+}
+catch (error) {
+    print("An error occurred: &{error.message}");
+}
+finally {
+    // Đoạn mã này luôn được thực thi, dù có ngoại lệ hay không
+    print("Execution completed.");
+}

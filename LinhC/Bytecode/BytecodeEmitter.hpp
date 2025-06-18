@@ -72,3 +72,5 @@ namespace Linh
         void emit_instr(OpCode op, BytecodeValue val = {}, int line = 0, int col = 0);
     };
 }
+
+// Đảm bảo enum OpCode đã có TRY, END_TRY như trên

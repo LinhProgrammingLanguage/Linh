@@ -300,7 +300,60 @@ namespace Linh
     void BytecodeEmitter::visitSwitchStmt(AST::SwitchStmt *) {}
     void BytecodeEmitter::visitDeleteStmt(AST::DeleteStmt *) {}
     void BytecodeEmitter::visitThrowStmt(AST::ThrowStmt *) {}
-    void BytecodeEmitter::visitTryStmt(AST::TryStmt *) {}
+    void BytecodeEmitter::visitTryStmt(AST::TryStmt *stmt)
+    {
+        // Đặt nhãn cho catch, finally, end
+        size_t try_start = chunk.size();
+        size_t catch_pos = 0, finally_pos = 0, end_pos = 0;
+
+        // Đặt biến error_var đặc biệt (ở đây dùng index -9999)
+        std::string error_var = "error";
+
+        // Đặt chỗ TRY, sẽ sửa operand sau
+        size_t try_instr_pos = chunk.size();
+        emit_instr(OpCode::TRY, std::make_tuple(int64_t(0), int64_t(0), int64_t(0), error_var), stmt->keyword_try.line, stmt->keyword_try.column_start);
+
+        // Sinh code cho try_block
+        if (stmt->try_block)
+            stmt->try_block->accept(this);
+
+        // Sau try_block, nhảy đến finally (nếu có), hoặc end
+        size_t after_try = chunk.size();
+        emit_instr(OpCode::JMP, int64_t(0), stmt->keyword_try.line, stmt->keyword_try.column_start); // placeholder
+
+        // catch
+        catch_pos = chunk.size();
+        if (!stmt->catch_clauses.empty())
+        {
+            // Chỉ lấy catch đầu tiên (giản lược)
+            auto &catch_clause = stmt->catch_clauses[0];
+            // Gán biến error (index -9999)
+            // (Ở đây không sinh code, VM sẽ tự gán khi lỗi)
+            if (catch_clause.body)
+                catch_clause.body->accept(this);
+        }
+
+        // finally
+        finally_pos = chunk.size();
+        if (stmt->finally_block.has_value() && stmt->finally_block.value())
+        {
+            stmt->finally_block.value()->accept(this);
+        }
+
+        // end
+        end_pos = chunk.size();
+        emit_instr(OpCode::END_TRY, {}, stmt->keyword_try.line, stmt->keyword_try.column_start);
+
+        // Sửa lại JMP sau try_block để nhảy qua catch đến finally/end
+        chunk[after_try].operand = int64_t(finally_pos);
+
+        // Sửa lại TRY operand
+        chunk[try_instr_pos].operand = std::make_tuple(
+            int64_t(catch_pos),
+            int64_t(finally_pos),
+            int64_t(end_pos),
+            error_var);
+    }
 
     std::any BytecodeEmitter::visitCallExpr(AST::CallExpr *expr)
     {
