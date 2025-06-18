@@ -9,6 +9,32 @@
 #include <fstream>
 #include <sstream>
 #include <string> // For std::string
+// utf 8
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <locale>
+#endif
+
+void force_console_utf8()
+{
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#else
+    std::locale::global(std::locale(""));
+    std::cout.imbue(std::locale());
+#endif
+}
+
+void increase_performance()
+{
+    // Turn off sync with stdio to increase input/output speed
+    std::ios_base::sync_with_stdio(false);
+
+    // Turn off automatic flush of cout when cin needs input
+    std::cin.tie(nullptr);
+}
 
 void runSource(const std::string &source_code,
                Linh::Semantic::SemanticAnalyzer *sema_ptr = nullptr,
@@ -115,6 +141,8 @@ void runSource(const std::string &source_code)
 
 int main(int argc, char **argv)
 {
+    force_console_utf8();
+    increase_performance();
     if (argc > 1)
     {
         runFile(argv[1]);

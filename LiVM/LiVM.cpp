@@ -1,23 +1,7 @@
 #include "LiVM.hpp"
 #include "iostream/iostream.hpp"
 #include "Loop.hpp"
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <locale>
-#endif
 #include <cmath>
-
-void force_console_utf8()
-{
-#ifdef _WIN32
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
-#else
-    std::locale::global(std::locale(""));
-    std::cout.imbue(std::locale());
-#endif
-}
 
 struct TryFrame
 {
@@ -60,7 +44,6 @@ namespace Linh
 
     void LiVM::run(const BytecodeChunk &chunk)
     {
-        force_console_utf8();
         ip = 0;
         std::vector<TryFrame> try_stack;
 
