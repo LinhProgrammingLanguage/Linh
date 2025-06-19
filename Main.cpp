@@ -85,7 +85,7 @@ void runSource(const std::string &source_code,
     {
         for (const auto &err : sema.errors)
         {
-            std::cerr << "[SemanticError] Line " << err.line << ", Col " << err.column << ": " << err.message << std::endl;
+            std::cerr << "[Line " << err.line << ", Col " << err.column << "] SemanticError : " << err.message << std::endl;
         }
         std::cerr << "Có lỗi semantic, dừng thực thi." << std::endl;
         return;

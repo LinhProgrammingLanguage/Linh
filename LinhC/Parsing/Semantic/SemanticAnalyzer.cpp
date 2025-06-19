@@ -463,8 +463,20 @@ namespace Linh
                 stmt->try_block->accept(this);
             for (const auto &c : stmt->catch_clauses)
             {
-                if (c.body)
-                    c.body->accept(this);
+                // --- Sửa tại đây: Đưa biến catch vào scope ---
+                if (c.exception_variable.has_value())
+                {
+                    begin_scope();
+                    declare_var(c.exception_variable.value().lexeme);
+                    if (c.body)
+                        c.body->accept(this);
+                    end_scope();
+                }
+                else
+                {
+                    if (c.body)
+                        c.body->accept(this);
+                }
             }
             if (stmt->finally_block.has_value() && stmt->finally_block.value())
             {
@@ -553,6 +565,18 @@ namespace Linh
             {
                 // Không kiểm tra biến/hàm cho 'input' hoặc 'type'
                 return {};
+            }
+            // --- Sửa tại đây: Cho phép error.message nếu error đã khai báo ---
+            const std::string &lex = expr->name.lexeme;
+            auto dot_pos = lex.find('.');
+            if (dot_pos != std::string::npos)
+            {
+                std::string base = lex.substr(0, dot_pos);
+                if (is_var_declared(base))
+                {
+                    // Cho phép error.message nếu error đã khai báo
+                    return {};
+                }
             }
             // Ưu tiên kiểm tra hàm trước biến
             if (is_function_declared(expr->name.lexeme))

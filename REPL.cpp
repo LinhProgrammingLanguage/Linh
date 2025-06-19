@@ -79,7 +79,7 @@ namespace Linh
             {
                 for (const auto &err : analyzer.errors)
                 {
-                    std::cerr << "[SemanticError] " << err.message << " (line " << err.line << ", col " << err.column << ")\n";
+                    std::cerr << " [Line " << err.line << ", Col " << err.column << "]" << "SemanticError : " << err.message << "\n";
                 }
                 continue;
             }
