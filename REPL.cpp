@@ -17,7 +17,7 @@ namespace Linh
         Linh::LiVM vm;
         Linh::BytecodeEmitter emitter;
         std::unordered_map<std::string, Linh::BytecodeEmitter::FunctionInfo> function_table;
-
+        std::cout << "Linh REPL (type '.exit' or '.quit' to exit)\n";
         while (true)
         {
             std::cout << ">>> ";

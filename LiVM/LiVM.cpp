@@ -18,24 +18,24 @@ namespace Linh
 
     LiVM::LiVM() {}
 
-    void LiVM::push(const std::variant<int64_t, double, std::string, bool> &val)
+    void LiVM::push(const std::variant<std::monostate, int64_t, double, std::string, bool> &val)
     {
         stack.push_back(val);
     }
 
-    std::variant<int64_t, double, std::string, bool> LiVM::pop()
+    std::variant<std::monostate, int64_t, double, std::string, bool> LiVM::pop()
     {
         if (stack.empty())
         {
-            std::cerr << "VM stack underflow" << std::endl;
-            return int64_t(0);
+            std::cerr << "[Line 0 , Col 0] RuntimeError : VM stack underflow" << std::endl;
+            return std::monostate{};
         }
         auto val = stack.back();
         stack.pop_back();
         return val;
     }
 
-    std::variant<int64_t, double, std::string, bool> LiVM::peek()
+    std::variant<std::monostate, int64_t, double, std::string, bool> LiVM::peek()
     {
         if (stack.empty())
             throw std::runtime_error("VM stack empty");
@@ -351,9 +351,6 @@ namespace Linh
                             sa = std::to_string(std::get<double>(a));
                         else if (std::holds_alternative<bool>(a))
                             sa = std::get<bool>(a) ? "true" : "false";
-                        else
-                            sa = "";
-
                         if (std::holds_alternative<std::string>(b))
                             sb = std::get<std::string>(b);
                         else if (std::holds_alternative<int64_t>(b))
@@ -362,33 +359,7 @@ namespace Linh
                             sb = std::to_string(std::get<double>(b));
                         else if (std::holds_alternative<bool>(b))
                             sb = std::get<bool>(b) ? "true" : "false";
-                        else
-                            sb = "";
-
-                        switch (instr.opcode)
-                        {
-                        case OpCode::EQ:
-                            result = (sa == sb);
-                            break;
-                        case OpCode::NEQ:
-                            result = (sa != sb);
-                            break;
-                        case OpCode::LT:
-                            result = (sa < sb);
-                            break;
-                        case OpCode::GT:
-                            result = (sa > sb);
-                            break;
-                        case OpCode::LTE:
-                            result = (sa <= sb);
-                            break;
-                        case OpCode::GTE:
-                            result = (sa >= sb);
-                            break;
-                        default:
-                            break;
-                        }
-                        push(result);
+                        push(sa + sb);
                         break;
                     }
                     // So sánh bool nếu cả hai là bool
@@ -528,6 +499,10 @@ namespace Linh
                 case OpCode::STORE_VAR:
                 {
                     int idx = std::get<int64_t>(instr.operand);
+                    if (stack.empty())
+                    {
+                        stack.push_back(std::monostate{});
+                    }
                     variables[idx] = pop();
                     break;
                 }
@@ -582,7 +557,7 @@ namespace Linh
                     }
                     const auto &fn = functions[fname];
                     // Pop arguments in reverse order
-                    std::vector<std::variant<int64_t, double, std::string, bool>> args;
+                    std::vector<std::variant<std::monostate, int64_t, double, std::string, bool>> args;
                     for (size_t i = 0; i < fn.param_names.size(); ++i)
                         args.push_back(pop());
                     std::reverse(args.begin(), args.end());
@@ -882,9 +857,6 @@ namespace Linh
                                     sa = std::to_string(std::get<double>(a));
                                 else if (std::holds_alternative<bool>(a))
                                     sa = std::get<bool>(a) ? "true" : "false";
-                                else
-                                    sa = "";
-
                                 if (std::holds_alternative<std::string>(b))
                                     sb = std::get<std::string>(b);
                                 else if (std::holds_alternative<int64_t>(b))
@@ -893,9 +865,6 @@ namespace Linh
                                     sb = std::to_string(std::get<double>(b));
                                 else if (std::holds_alternative<bool>(b))
                                     sb = std::get<bool>(b) ? "true" : "false";
-                                else
-                                    sb = "";
-
                                 switch (instr.opcode)
                                 {
                                 case OpCode::EQ:
@@ -1051,6 +1020,10 @@ namespace Linh
                         case OpCode::STORE_VAR:
                         {
                             int idx = std::get<int64_t>(finstr.operand);
+                            if (stack.empty())
+                            {
+                                stack.push_back(std::monostate{});
+                            }
                             variables[idx] = pop();
                             break;
                         }
@@ -1088,6 +1061,11 @@ namespace Linh
                             break;
                         }
                         case OpCode::RET:
+                            // --- Fix: Always push a value to the stack before returning ---
+                            if (stack.empty())
+                            {
+                                stack.push_back(std::monostate{});
+                            }
                             // Restore previous frame
                             if (!call_stack.empty())
                             {
@@ -1109,7 +1087,11 @@ namespace Linh
                     continue;
                 }
                 case OpCode::RET:
-                    // Should not happen in global code
+                    // --- Fix: Always push a value to the stack before returning from global code (should not happen, but for safety) ---
+                    if (stack.empty())
+                    {
+                        stack.push_back(std::monostate{});
+                    }
                     return;
                 // --- Thêm xử lý TRY-CATCH-FINALLY ---
                 case OpCode::TRY:

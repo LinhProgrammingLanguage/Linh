@@ -27,24 +27,22 @@ namespace Linh
         struct CallFrame
         {
             size_t return_ip;
-            std::unordered_map<int, std::variant<int64_t, double, std::string, bool>> locals;
+            std::unordered_map<int, std::variant<std::monostate, int64_t, double, std::string, bool>> locals;
         };
         std::vector<CallFrame> call_stack;
 
-        // --- Add this method ---
         void set_functions(const std::unordered_map<std::string, Function> &funcs)
         {
             functions = funcs;
         }
-        // ----------------------
 
     private:
-        std::vector<std::variant<int64_t, double, std::string, bool>> stack;
-        std::unordered_map<int, std::variant<int64_t, double, std::string, bool>> variables;
+        std::vector<std::variant<std::monostate, int64_t, double, std::string, bool>> stack;
+        std::unordered_map<int, std::variant<std::monostate, int64_t, double, std::string, bool>> variables;
         size_t ip = 0; // instruction pointer
 
-        void push(const std::variant<int64_t, double, std::string, bool> &val);
-        std::variant<int64_t, double, std::string, bool> pop();
-        std::variant<int64_t, double, std::string, bool> peek();
+        void push(const std::variant<std::monostate, int64_t, double, std::string, bool> &val);
+        std::variant<std::monostate, int64_t, double, std::string, bool> pop();
+        std::variant<std::monostate, int64_t, double, std::string, bool> peek();
     };
 }

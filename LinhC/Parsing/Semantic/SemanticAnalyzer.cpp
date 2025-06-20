@@ -102,15 +102,11 @@ namespace Linh
 
             if (kw == "vas" || kw == "const")
             {
-                if (type_is_uninit)
-                {
-                    errors.emplace_back("'" + kw + "' cannot declare type 'uninit'.", line, col);
-                }
-                // Always error if value is uninit (even if type is omitted)
-                if (value_is_uninit)
-                {
-                    errors.emplace_back("'" + kw + "' cannot be initialized with 'uninit' value.", line, col);
-                }
+                // Bỏ báo lỗi cho phép vas và const được khởi tạo với uninit
+                // if (value_is_uninit)
+                // {
+                //     errors.emplace_back("'" + kw + "' cannot be initialized with 'uninit' value.", line, col);
+                // }
             }
             else if (kw == "var")
             {
@@ -386,7 +382,12 @@ namespace Linh
             // Giả sử stmt->return_type là optional<TypeNodePtr> và nullptr nếu không có
             if (stmt->return_type.has_value() && stmt->return_type.value() && !has_return)
             {
-                errors.emplace_back("Function '" + stmt->name.lexeme + "' must have a return statement.", stmt->name.line, stmt->name.column_start);
+                // --- Sửa: Không bắt buộc return nếu kiểu trả về là void hoặc uninit ---
+                auto *base = dynamic_cast<AST::BaseTypeNode *>(stmt->return_type.value().get());
+                if (!base || (base->type_keyword_token.type != TokenType::VOID_KW && base->type_keyword_token.type != TokenType::UNINIT_KW))
+                {
+                    errors.emplace_back("Function '" + stmt->name.lexeme + "' must have a return statement.", stmt->name.line, stmt->name.column_start);
+                }
             }
             end_scope();
         }

@@ -183,8 +183,9 @@ namespace Linh
         {
             if (AST::UninitLiteralExpr *uninit_init = dynamic_cast<AST::UninitLiteralExpr *>(initializer_expr.get()))
             {
-                Token error_token = uninit_init->keyword;
-                throw error(error_token, "Cannot infer fixed type for '" + keyword_token.lexeme + "' from 'uninit' value. Use 'var' or provide an explicit type (e.g., 'vas myVar: some_type = uninit;').");
+                // Bỏ báo lỗi, cho phép vas/const = uninit mà không cần kiểu
+                // Token error_token = uninit_init->keyword;
+                // throw error(error_token, "Cannot infer fixed type for '" + keyword_token.lexeme + "' from 'uninit' value. Use 'var' or provide an explicit type (e.g., 'vas myVar: some_type = uninit;').");
             }
         }
 
@@ -263,10 +264,11 @@ namespace Linh
             {
                 if (const AST::BaseTypeNode *base_ret_type = dynamic_cast<const AST::BaseTypeNode *>(return_type_node.value().get()))
                 {
-                    if (base_ret_type->type_keyword_token.type == TokenType::UNINIT_KW)
-                    {
-                        throw error(base_ret_type->type_keyword_token, "Function cannot have return type 'uninit' alone. Use 'void' if no value is returned, or a specific type.");
-                    }
+                    // Cho phép func trả về uninit như một kiểu dữ liệu nguyên thủy
+                    // if (base_ret_type->type_keyword_token.type == TokenType::UNINIT_KW)
+                    // {
+                    //     throw error(base_ret_type->type_keyword_token, "Function cannot have return type 'uninit' alone. Use 'void' if no value is returned, or a specific type.");
+                    // }
                 }
             }
         }
