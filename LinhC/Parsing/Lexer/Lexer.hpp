@@ -36,6 +36,13 @@ namespace Linh
         PERCENT,
         COLON,
         HASH,
+        // --- Bitwise operators ---
+        AMP,   // &
+        PIPE,  // |
+        CARET, // ^
+        TILDE, // ~
+        LT_LT, // <<
+        GT_GT, // >>
 
         // One or two character tokens
         NOT,

@@ -17,6 +17,7 @@ namespace Linh
         void type();
 
         friend void handle_loop_opcode(LiVM &vm, const Instruction &instr, const BytecodeChunk &chunk, size_t &ip);
+        friend void math_binary_op(LiVM &vm, const Instruction &instr); // Thêm dòng này
 
         struct Function
         {

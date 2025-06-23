@@ -1,6 +1,11 @@
 @echo off
 setlocal enabledelayedexpansion
 
+echo +-------------------------------+
+echo   Build project in Debug mode
+echo +-------------------------------+
+echo.
+
 REM Set build directory
 set BUILD_DIR=build
 

@@ -49,6 +49,7 @@ add_library(LiVMLib STATIC
     LiVM/iostream/iostream.cpp # Thêm dòng này để build iostream
     LiVM/type.cpp
     LiVM/Loop.cpp
+    LiVM/Math/Math.cpp
 )
 target_include_directories(LiVMLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

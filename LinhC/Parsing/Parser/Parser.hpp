@@ -66,6 +66,12 @@ namespace Linh
         AST::ExprPtr parse_map_literal();
         AST::ExprPtr parse_interpolated_string(const Token &first_str_token);
 
+        // --- Bitwise precedence ---
+        AST::ExprPtr bitwise_or();
+        AST::ExprPtr bitwise_xor();
+        AST::ExprPtr bitwise_and();
+        AST::ExprPtr bitwise_shift();
+
         // --- Declaration and Statement Parsing ---
         AST::StmtPtr declaration();
         AST::StmtPtr var_declaration(Token keyword_token);

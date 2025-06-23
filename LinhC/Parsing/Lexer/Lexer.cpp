@@ -482,19 +482,39 @@ namespace Linh
             case '=':
                 create_and_add_token(match('=') ? TokenType::EQ_EQ : TokenType::ASSIGN, lexeme_start_line, lexeme_start_col);
                 break;
+            case '&':
+                if (match('&'))
+                    create_and_add_token(TokenType::AND_LOGIC, lexeme_start_line, lexeme_start_col);
+                else
+                    create_and_add_token(TokenType::AMP, lexeme_start_line, lexeme_start_col);
+                break;
+            case '|':
+                if (match('|'))
+                    create_and_add_token(TokenType::OR_LOGIC, lexeme_start_line, lexeme_start_col);
+                else
+                    create_and_add_token(TokenType::PIPE, lexeme_start_line, lexeme_start_col);
+                break;
+            case '^':
+                create_and_add_token(TokenType::CARET, lexeme_start_line, lexeme_start_col);
+                break;
+            case '~':
+                create_and_add_token(TokenType::TILDE, lexeme_start_line, lexeme_start_col);
+                break;
             case '<':
-                create_and_add_token(match('=') ? TokenType::LT_EQ : TokenType::LT, lexeme_start_line, lexeme_start_col);
+                if (match('<'))
+                    create_and_add_token(TokenType::LT_LT, lexeme_start_line, lexeme_start_col);
+                else if (match('='))
+                    create_and_add_token(TokenType::LT_EQ, lexeme_start_line, lexeme_start_col);
+                else
+                    create_and_add_token(TokenType::LT, lexeme_start_line, lexeme_start_col);
                 break;
             case '>':
-                create_and_add_token(match('=') ? TokenType::GT_EQ : TokenType::GT, lexeme_start_line, lexeme_start_col);
-                break;
-            case '+':
-                if (match('+'))
-                    create_and_add_token(TokenType::PLUS_PLUS, lexeme_start_line, lexeme_start_col);
+                if (match('>'))
+                    create_and_add_token(TokenType::GT_GT, lexeme_start_line, lexeme_start_col);
                 else if (match('='))
-                    create_and_add_token(TokenType::PLUS_ASSIGN, lexeme_start_line, lexeme_start_col);
+                    create_and_add_token(TokenType::GT_EQ, lexeme_start_line, lexeme_start_col);
                 else
-                    create_and_add_token(TokenType::PLUS, lexeme_start_line, lexeme_start_col);
+                    create_and_add_token(TokenType::GT, lexeme_start_line, lexeme_start_col);
                 break;
             case '-':
                 if (match('-'))
@@ -503,6 +523,14 @@ namespace Linh
                     create_and_add_token(TokenType::MINUS_ASSIGN, lexeme_start_line, lexeme_start_col);
                 else
                     create_and_add_token(TokenType::MINUS, lexeme_start_line, lexeme_start_col);
+                break;
+            case '+':
+                if (match('+'))
+                    create_and_add_token(TokenType::PLUS_PLUS, lexeme_start_line, lexeme_start_col);
+                else if (match('='))
+                    create_and_add_token(TokenType::PLUS_ASSIGN, lexeme_start_line, lexeme_start_col);
+                else
+                    create_and_add_token(TokenType::PLUS, lexeme_start_line, lexeme_start_col);
                 break;
             case '*':
                 if (match('*'))
@@ -524,18 +552,6 @@ namespace Linh
                     create_and_add_token(TokenType::SLASH_ASSIGN, lexeme_start_line, lexeme_start_col);
                 else
                     create_and_add_token(TokenType::SLASH, lexeme_start_line, lexeme_start_col);
-                break;
-            case '&':
-                if (match('&'))
-                    create_and_add_token(TokenType::AND_LOGIC, lexeme_start_line, lexeme_start_col);
-                else
-                    m_tokens.emplace_back(TokenType::ERROR, std::string(1, c), "Unexpected char '&'. Did you mean '&&'?", lexeme_start_line, lexeme_start_col);
-                break;
-            case '|':
-                if (match('|'))
-                    create_and_add_token(TokenType::OR_LOGIC, lexeme_start_line, lexeme_start_col);
-                else
-                    m_tokens.emplace_back(TokenType::ERROR, std::string(1, c), "Unexpected char '|'. Did you mean '||'?", lexeme_start_line, lexeme_start_col);
                 break;
             case ' ':
             case '\r':
@@ -560,6 +576,7 @@ namespace Linh
                 break;
             }
         }
+        m_current_col_scan = 1;
         m_tokens.emplace_back(TokenType::END_OF_FILE, "", std::monostate{}, m_current_line, m_current_col_scan);
         return m_tokens;
     }

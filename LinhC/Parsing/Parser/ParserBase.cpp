@@ -162,31 +162,20 @@ namespace Linh
 
     void Parser::synchronize()
     {
-        // std::cout << "PARSER_SYNC: Bắt đầu synchronize. Token hiện tại trước khi advance: " << debug_token_info(peek()) << std::endl;
-        if (!is_at_end()) // Chỉ advance nếu chưa ở EOF, tránh advance qua EOF
+        // Luôn advance ít nhất một lần nếu chưa ở EOF
+        if (!is_at_end())
             advance();
-
-        // std::cout << "PARSER_SYNC: Sau khi advance (nếu có). Token trước đó (đã consume): ";
-        // if (m_current > 0) std::cout << debug_token_info(previous()) << std::endl;
-        // else std::cout << "N/A (đầu file)\n";
 
         while (!is_at_end())
         {
-            // std::cout << "PARSER_SYNC: Trong vòng lặp. Token trước đó: ";
-            // if (m_current > 0) std::cout << debug_token_info(previous()); else std::cout << "N/A";
-            // std::cout << ". Peek: " << debug_token_info(peek()) << std::endl;
-
             if (m_current > 0 && previous().type == TokenType::SEMICOLON)
-            {
-                // std::cout << "PARSER_SYNC: Tìm thấy SEMICOLON, kết thúc synchronize." << std::endl;
                 return;
-            }
 
             switch (peek().type)
             {
             case TokenType::FUNC_KW:
             case TokenType::VAR_KW:
-            case TokenType::VAS_KW: // THÊM DÒNG NÀY
+            case TokenType::VAS_KW:
             case TokenType::CONST_KW:
             case TokenType::FOR_KW:
             case TokenType::IF_KW:
@@ -195,19 +184,16 @@ namespace Linh
             case TokenType::RETURN_KW:
             case TokenType::SWITCH_KW:
             case TokenType::TRY_KW:
-                // case TokenType::CLASS_KW: // Thêm nếu có class
-                // std::cout << "PARSER_SYNC: Tìm thấy từ khóa bắt đầu câu lệnh (" << debug_token_info(peek()) << "), kết thúc synchronize." << std::endl;
                 return;
             default:
-                break; // Tiếp tục advance
+                break;
             }
-            // std::cout << "PARSER_SYNC: Advance trong synchronize." << std::endl;
-            if (!is_at_end()) // Kiểm tra lại trước khi advance
+            // Luôn advance nếu chưa ở EOF
+            if (!is_at_end())
                 advance();
             else
-                break; // Đã ở EOF, không advance nữa
+                break;
         }
-        // std::cout << "PARSER_SYNC: Kết thúc synchronize ở cuối file hoặc sau khi xử lý." << std::endl;
     }
 
     // --- Main Parse Method ---

@@ -119,6 +119,10 @@ namespace Linh
         case TokenType::PERCENT:
             emit_instr(OpCode::MOD, {}, line, col);
             break;
+        case TokenType::STAR_STAR:
+            // Hỗ trợ phép mũ (**) cho int và float
+            emit_instr(OpCode::CALL, std::string("pow"), line, col);
+            break;
         case TokenType::EQ_EQ:
             emit_instr(OpCode::EQ, {}, line, col);
             break;
@@ -145,6 +149,24 @@ namespace Linh
         case TokenType::OR_KW:
             emit_instr(OpCode::OR, {}, line, col);
             break;
+        case TokenType::HASH:
+            emit_instr(OpCode::HASH, {}, line, col);
+            break;
+        case TokenType::PIPE:
+            emit_instr(OpCode::PIPE, {}, line, col);
+            break;
+        case TokenType::CARET:
+            emit_instr(OpCode::CARET, {}, line, col);
+            break;
+        case TokenType::AMP:
+            emit_instr(OpCode::AMP, {}, line, col);
+            break;
+        case TokenType::LT_LT:
+            emit_instr(OpCode::LT_LT, {}, line, col);
+            break;
+        case TokenType::GT_GT:
+            emit_instr(OpCode::GT_GT, {}, line, col);
+            break;
         default:
             // Not implemented
             break;
@@ -166,6 +188,9 @@ namespace Linh
         case TokenType::NOT:
         case TokenType::NOT_KW:
             emit_instr(OpCode::NOT, {}, expr->getLine(), expr->getCol());
+            break;
+        case TokenType::TILDE:
+            emit_instr(OpCode::NOT); // <-- Thêm dòng này cho ~
             break;
         default:
             break;

@@ -2,6 +2,17 @@
 #include "Parser.hpp" // Header chính của Parser
 #include <iostream>   // Cho std::cout (debug)
 #include <string>     // Cho std::string
+#include <sstream>    // Thêm dòng này để dùng std::ostringstream
+
+// --- Thêm hàm debug_token_info tại đây ---
+static std::string debug_token_info(const Linh::Token &t)
+{
+    std::ostringstream oss;
+    oss << "'" << t.lexeme << "' (Type: " << Linh::token_type_to_string(t.type)
+        << ", Line: " << t.line
+        << ", Col: " << t.column_start << ")";
+    return oss.str();
+}
 
 // Nếu bạn có hàm debug_token_info và muốn sử dụng ở đây,
 // bạn có thể include tệp chứa nó hoặc định nghĩa lại ở đây.
@@ -56,10 +67,15 @@ namespace Linh
     AST::StmtPtr Parser::print_statement()
     {
         Token keyword = previous(); // previous() là PRINT_KW
+        std::cout << "[DEBUG][PARSER] Enter print_statement at token: " << debug_token_info(peek()) << std::endl;
         consume(TokenType::LPAREN, "Thiếu '(' sau 'print'.");
+        std::cout << "[DEBUG][PARSER] After consume LPAREN, next token: " << debug_token_info(peek()) << std::endl;
         AST::ExprPtr value = expression();
+        std::cout << "[DEBUG][PARSER] After parse expression, next token: " << debug_token_info(peek()) << std::endl;
         consume(TokenType::RPAREN, "Thiếu ')' sau đối số của print.");
+        std::cout << "[DEBUG][PARSER] After consume RPAREN, next token: " << debug_token_info(peek()) << std::endl;
         consume(TokenType::SEMICOLON, "Thiếu ';' sau câu lệnh print.");
+        std::cout << "[DEBUG][PARSER] After consume SEMICOLON, next token: " << debug_token_info(peek()) << std::endl;
         return std::make_unique<AST::PrintStmt>(std::move(keyword), std::move(value));
     }
 

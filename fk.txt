@@ -1,7 +1,4 @@
-2025.6.20
-- Allow vas and const to use type uninit without reporting a semantic error.
-- Remove the error that prevents declaring vas or const with type uninit.
-- Add print uninit
-- Fix the "VM stack underflow" 
-- Add Func return uninit 
-- Add std::cout << "Linh REPL (type '.exit' or '.quit' to exit)\n";
+2025.6.22
+- New bitwise.
+- Fix
+- Add Debug

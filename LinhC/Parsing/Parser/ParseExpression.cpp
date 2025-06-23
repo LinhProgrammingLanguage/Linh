@@ -18,6 +18,52 @@ namespace Linh
         return assignment();
     }
 
+    // --- Bitwise precedence: | ^ & << >> ---
+    AST::ExprPtr Parser::bitwise_or()
+    {
+        AST::ExprPtr expr = bitwise_xor();
+        while (match({TokenType::PIPE}))
+        {
+            Token op = previous();
+            AST::ExprPtr right = bitwise_xor();
+            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
+        }
+        return expr;
+    }
+    AST::ExprPtr Parser::bitwise_xor()
+    {
+        AST::ExprPtr expr = bitwise_and();
+        while (match({TokenType::CARET}))
+        {
+            Token op = previous();
+            AST::ExprPtr right = bitwise_and();
+            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
+        }
+        return expr;
+    }
+    AST::ExprPtr Parser::bitwise_and()
+    {
+        AST::ExprPtr expr = bitwise_shift();
+        while (match({TokenType::AMP}))
+        {
+            Token op = previous();
+            AST::ExprPtr right = bitwise_shift();
+            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
+        }
+        return expr;
+    }
+    AST::ExprPtr Parser::bitwise_shift()
+    {
+        AST::ExprPtr expr = term();
+        while (match({TokenType::LT_LT, TokenType::GT_GT}))
+        {
+            Token op = previous();
+            AST::ExprPtr right = term();
+            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
+        }
+        return expr;
+    }
+
     AST::ExprPtr Parser::assignment()
     {
         // logical_or ( ( '=' | '+=' | ... ) assignment )?
@@ -32,11 +78,17 @@ namespace Linh
             AST::ExprPtr value = assignment();  // Parse vế phải (đệ quy, cho phép a = b = c)
 
             // Kiểm tra xem vế trái có phải là một lvalue hợp lệ không
-            // Hiện tại, chúng ta chỉ hỗ trợ gán cho IdentifierExpr.
-            // Sau này cần mở rộng cho SubscriptExpr (myArray[index] = ...)
-            // và MemberAccessExpr (myObject.property = ...).
             if (AST::IdentifierExpr *identifier_lvalue = dynamic_cast<AST::IdentifierExpr *>(expr.get()))
             {
+                // --- Disallow assignment to undeclared variables ---
+                // Only allow assignment if variable is declared (in semantic, but here we can check for 'var', 'vas', 'const' in this statement)
+                // In parser, we can only check for direct assignment at top-level (not in expressions), so best-effort:
+                // If this is a top-level assignment (not inside a declaration), throw error.
+                throw error(identifier_lvalue->name, "Assignment to undeclared variable '" + identifier_lvalue->name.lexeme + "'. Use 'var', 'vas', or 'const' to declare.");
+                // If you want to allow assignment only to declared variables, you must track declared names in the parser or rely on semantic phase.
+                // For now, always error here for assignment to bare identifier.
+                // If you want to allow, comment out the above line.
+
                 if (equals_op_token.type == TokenType::ASSIGN)
                 { // Gán đơn giản '='
                     return std::make_unique<AST::AssignmentExpr>(identifier_lvalue->name, std::move(value));
@@ -134,11 +186,11 @@ namespace Linh
     AST::ExprPtr Parser::comparison()
     {
         // term ( ( '>' | '>=' | '<' | '<=' | 'is' ) term )*
-        AST::ExprPtr expr = term();
+        AST::ExprPtr expr = bitwise_shift();
         while (match({TokenType::GT, TokenType::GT_EQ, TokenType::LT, TokenType::LT_EQ, TokenType::IS_KW}))
         {
             Token op = previous();
-            AST::ExprPtr right = term();
+            AST::ExprPtr right = bitwise_shift();
             expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
         }
         return expr;
@@ -180,9 +232,7 @@ namespace Linh
         if (match({TokenType::STAR_STAR}))
         {
             Token op = previous();
-            // Để right-associative, toán hạng phải phải có cùng mức ưu tiên hoặc cao hơn
-            // (tức là gọi lại exponentiation() hoặc một hàm có độ ưu tiên cao hơn như unary())
-            AST::ExprPtr right = exponentiation(); // Đệ quy cho right-associativity
+            AST::ExprPtr right = exponentiation();
             expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
         }
         return expr;
@@ -193,7 +243,7 @@ namespace Linh
         // ( '!' | '-' | '++' | '--' | 'not' ) unary
         // | NEW_KW call_or_member_access
         // | call_or_member_access
-        if (match({TokenType::NOT, TokenType::MINUS, TokenType::PLUS_PLUS, TokenType::MINUS_MINUS, TokenType::NOT_KW}))
+        if (match({TokenType::NOT, TokenType::MINUS, TokenType::PLUS_PLUS, TokenType::MINUS_MINUS, TokenType::NOT_KW, TokenType::TILDE}))
         {
             Token op = previous();        // Toán tử prefix
             AST::ExprPtr right = unary(); // Parse toán hạng
@@ -357,7 +407,7 @@ namespace Linh
                 if (peek().type == TokenType::RBRACKET)
                     break;
                 elements.push_back(expression());
-            } while (match({TokenType::COMMA}));
+            } while (match({TokenType::COMMA})); // Lặp lại nếu có dấu phẩy
         }
 
         Token r_bracket = consume(TokenType::RBRACKET, "Thiếu ']' để kết thúc array literal.");

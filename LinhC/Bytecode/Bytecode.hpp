@@ -25,6 +25,14 @@ namespace Linh
         MUL,
         DIV,
         MOD,
+        HASH, // <-- This is the correct opcode for #
+
+        // --- Bitwise ---
+        AMP,   // &
+        PIPE,  // |
+        CARET, // ^
+        LT_LT, // <<
+        GT_GT, // >>
 
         // Logic
         AND,

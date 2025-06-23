@@ -273,7 +273,6 @@ namespace Linh
             {
                 var_str_limit[stmt->name.lexeme] = str_limit;
             }
-
             // Nếu có giới hạn str<index> và có initializer là LiteralExpr thì cắt chuỗi
             if (type == "str" && str_limit > 0 && stmt->initializer)
             {
