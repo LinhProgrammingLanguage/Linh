@@ -13,60 +13,26 @@ namespace Linh
 
     AST::ExprPtr Parser::expression()
     {
-        // Điểm bắt đầu cho việc parse một biểu thức, thường là mức ưu tiên thấp nhất.
-        // Theo grammar của bạn, nó là assignment.
+        // Start from the lowest precedence: assignment
         return assignment();
     }
 
     // --- Bitwise precedence: | ^ & << >> ---
-    AST::ExprPtr Parser::bitwise_or()
-    {
-        AST::ExprPtr expr = bitwise_xor();
-        while (match({TokenType::PIPE}))
-        {
-            Token op = previous();
-            AST::ExprPtr right = bitwise_xor();
-            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
-        }
-        return expr;
-    }
-    AST::ExprPtr Parser::bitwise_xor()
-    {
-        AST::ExprPtr expr = bitwise_and();
-        while (match({TokenType::CARET}))
-        {
-            Token op = previous();
-            AST::ExprPtr right = bitwise_and();
-            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
-        }
-        return expr;
-    }
-    AST::ExprPtr Parser::bitwise_and()
-    {
-        AST::ExprPtr expr = bitwise_shift();
-        while (match({TokenType::AMP}))
-        {
-            Token op = previous();
-            AST::ExprPtr right = bitwise_shift();
-            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
-        }
-        return expr;
-    }
-    AST::ExprPtr Parser::bitwise_shift()
-    {
-        AST::ExprPtr expr = term();
-        while (match({TokenType::LT_LT, TokenType::GT_GT}))
-        {
-            Token op = previous();
-            AST::ExprPtr right = term();
-            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
-        }
-        return expr;
-    }
+    // Correct precedence order:
+    // logical_or (lowest)
+    //   -> logical_and
+    //     -> bitwise_or (|)
+    //       -> bitwise_xor (^)
+    //         -> bitwise_and (&)
+    //           -> bitwise_shift (<<, >>)
+    //             -> comparison
+    //               -> term (+, -)
+    //                 -> factor (*, /, %, #)
+    //                   -> exponentiation (**)
+    //                     -> unary
 
     AST::ExprPtr Parser::assignment()
     {
-        // logical_or ( ( '=' | '+=' | ... ) assignment )?
         AST::ExprPtr expr = logical_or(); // Parse vế trái tiềm năng
 
         // Kiểm tra các toán tử gán
@@ -160,21 +126,53 @@ namespace Linh
     AST::ExprPtr Parser::logical_and()
     {
         // equality ( ( '&&' | 'and' ) equality )*
-        AST::ExprPtr expr = equality();
+        AST::ExprPtr expr = bitwise_or();
         while (match({TokenType::AND_LOGIC, TokenType::AND_KW}))
         {
             Token op = previous();
-            AST::ExprPtr right = equality();
+            AST::ExprPtr right = bitwise_or();
             expr = std::make_unique<AST::LogicalExpr>(std::move(expr), op, std::move(right));
         }
         return expr;
     }
 
-    AST::ExprPtr Parser::equality()
+    AST::ExprPtr Parser::bitwise_or()
     {
-        // comparison ( ( '!=' | '==' ) comparison )*
+        AST::ExprPtr expr = bitwise_xor();
+        while (match({TokenType::PIPE}))
+        {
+            Token op = previous();
+            AST::ExprPtr right = bitwise_xor();
+            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
+        }
+        return expr;
+    }
+    AST::ExprPtr Parser::bitwise_xor()
+    {
+        AST::ExprPtr expr = bitwise_and();
+        while (match({TokenType::CARET}))
+        {
+            Token op = previous();
+            AST::ExprPtr right = bitwise_and();
+            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
+        }
+        return expr;
+    }
+    AST::ExprPtr Parser::bitwise_and()
+    {
+        AST::ExprPtr expr = bitwise_shift();
+        while (match({TokenType::AMP}))
+        {
+            Token op = previous();
+            AST::ExprPtr right = bitwise_shift();
+            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
+        }
+        return expr;
+    }
+    AST::ExprPtr Parser::bitwise_shift()
+    {
         AST::ExprPtr expr = comparison();
-        while (match({TokenType::NOT_EQ, TokenType::EQ_EQ}))
+        while (match({TokenType::LT_LT, TokenType::GT_GT}))
         {
             Token op = previous();
             AST::ExprPtr right = comparison();
@@ -186,11 +184,11 @@ namespace Linh
     AST::ExprPtr Parser::comparison()
     {
         // term ( ( '>' | '>=' | '<' | '<=' | 'is' ) term )*
-        AST::ExprPtr expr = bitwise_shift();
+        AST::ExprPtr expr = term();
         while (match({TokenType::GT, TokenType::GT_EQ, TokenType::LT, TokenType::LT_EQ, TokenType::IS_KW}))
         {
             Token op = previous();
-            AST::ExprPtr right = bitwise_shift();
+            AST::ExprPtr right = term();
             expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
         }
         return expr;

@@ -99,7 +99,6 @@ namespace Linh
         if (expr->right)
             expr->right->accept(this);
 
-        // Map TokenType to OpCode
         int line = expr->op.line;
         int col = expr->op.column_start;
         switch (expr->op.type)
@@ -120,7 +119,6 @@ namespace Linh
             emit_instr(OpCode::MOD, {}, line, col);
             break;
         case TokenType::STAR_STAR:
-            // Hỗ trợ phép mũ (**) cho int và float
             emit_instr(OpCode::CALL, std::string("pow"), line, col);
             break;
         case TokenType::EQ_EQ:
@@ -168,7 +166,6 @@ namespace Linh
             emit_instr(OpCode::GT_GT, {}, line, col);
             break;
         default:
-            // Not implemented
             break;
         }
         return {};
