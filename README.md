@@ -89,4 +89,4 @@ Contributions, bug reports, and ideas are welcome! Please open an issue or pull 
 
 ---
 
-© 2025 Sao Tin Developer Team. See [LICENSE](LICENSE) for license details.
+© 2025 Sao Tin Developer Team. See [LICENSE](LICENSE.md) for license details.
