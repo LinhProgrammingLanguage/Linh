@@ -89,46 +89,59 @@ namespace Linh
         }
 
         // --- Hỗ trợ string như một alias của str ---
-        if (check(TokenType::IDENTIFIER) && peek().lexeme == "string") {
+        if (check(TokenType::IDENTIFIER) && peek().lexeme == "string")
+        {
             Token string_token = advance();
             // Xử lý các trường hợp string<...> hoặc string[...]
-            if (check(TokenType::LT)) {
+            if (check(TokenType::LT))
+            {
                 consume(TokenType::LT, "Mong đợi '<' sau 'string' để giới hạn số ký tự.");
-                if (check(TokenType::INT)) {
+                if (check(TokenType::INT))
+                {
                     Token index_token = consume(TokenType::INT, "Mong đợi số nguyên cho chỉ số giới hạn string.");
                     consume(TokenType::GT, "Thiếu '>' sau chỉ số string.");
                     Token str_token(TokenType::STR_KW, "str", std::string(""), string_token.line, string_token.column_start);
                     auto node = std::make_unique<AST::BaseTypeNode>(str_token);
                     node->template_arg = std::stoi(index_token.lexeme);
                     return node;
-                } else if (check(TokenType::ANY_KW)) {
+                }
+                else if (check(TokenType::ANY_KW))
+                {
                     Token any_token = consume(TokenType::ANY_KW, "Mong đợi 'any' hoặc số nguyên trong string<any>.");
                     consume(TokenType::GT, "Thiếu '>' sau 'any' trong string<any>.");
                     Token str_token(TokenType::STR_KW, "str", std::string(""), string_token.line, string_token.column_start);
                     auto node = std::make_unique<AST::BaseTypeNode>(str_token);
                     node->template_arg = std::nullopt;
                     return node;
-                } else {
+                }
+                else
+                {
                     throw error(peek(), "Mong đợi số nguyên hoặc 'any' trong string<...>.");
                 }
             }
-            if (check(TokenType::LBRACKET)) {
+            if (check(TokenType::LBRACKET))
+            {
                 consume(TokenType::LBRACKET, "Mong đợi '[' sau 'string' để giới hạn số ký tự.");
-                if (check(TokenType::INT)) {
+                if (check(TokenType::INT))
+                {
                     Token index_token = consume(TokenType::INT, "Mong đợi số nguyên cho chỉ số giới hạn string.");
                     consume(TokenType::RBRACKET, "Thiếu ']' sau chỉ số string.");
                     Token str_token(TokenType::STR_KW, "str", std::string(""), string_token.line, string_token.column_start);
                     auto node = std::make_unique<AST::BaseTypeNode>(str_token);
                     node->template_arg = std::stoi(index_token.lexeme);
                     return node;
-                } else if (check(TokenType::ANY_KW)) {
+                }
+                else if (check(TokenType::ANY_KW))
+                {
                     Token any_token = consume(TokenType::ANY_KW, "Mong đợi 'any' hoặc số nguyên trong string[any].");
                     consume(TokenType::RBRACKET, "Thiếu ']' sau 'any' trong string[any].");
                     Token str_token(TokenType::STR_KW, "str", std::string(""), string_token.line, string_token.column_start);
                     auto node = std::make_unique<AST::BaseTypeNode>(str_token);
                     node->template_arg = std::nullopt;
                     return node;
-                } else {
+                }
+                else
+                {
                     throw error(peek(), "Mong đợi số nguyên hoặc 'any' trong string[...].");
                 }
             }

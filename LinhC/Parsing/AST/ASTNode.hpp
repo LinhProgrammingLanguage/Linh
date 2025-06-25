@@ -543,6 +543,8 @@ namespace Linh
             ArrayLiteralExpr(Token l, std::vector<ExprPtr> elems, Token r)
                 : l_bracket(std::move(l)), elements(std::move(elems)), r_bracket(std::move(r)) {}
             std::any accept(ExprVisitor *visitor) override { return visitor->visitArrayLiteralExpr(this); }
+            int getLine() const { return l_bracket.line; }
+            int getCol() const { return l_bracket.column_start; }
         };
 
         struct MapLiteralExpr : Expr
@@ -588,3 +590,4 @@ namespace Linh
     } // namespace AST
 } // namespace Linh
 #endif // LINH_AST_NODE_HPP
+       // NOTE: 'uninit' is a primitive type in Tinh Linh. It is not 'null' and always exists in memory.

@@ -2,6 +2,7 @@
 #include "../../../config.hpp"
 #include <array>                              // thêm dòng này
 #include <fstream>                            // thêm dòng này
+#include <unordered_set>                      // <--- add this line
 #include "../Parser/Parser.hpp"               // thêm dòng này
 #include "../../Bytecode/BytecodeEmitter.hpp" // Thêm dòng này để dùng BytecodeEmitter
 
@@ -560,10 +561,11 @@ namespace Linh
         }
         std::any SemanticAnalyzer::visitIdentifierExpr(AST::IdentifierExpr *expr)
         {
-            // Cho phép dùng 'input' như một hàm built-in mà không cần khai báo
-            if (expr->name.lexeme == "input" || expr->name.lexeme == "type")
+            // Allow built-in functions as identifiers without declaration
+            static const std::unordered_set<std::string> builtin_funcs = {
+                "input", "type", "str", "int", "float", "bool", "uint"};
+            if (builtin_funcs.count(expr->name.lexeme))
             {
-                // Không kiểm tra biến/hàm cho 'input' hoặc 'type'
                 return {};
             }
             // --- Sửa tại đây: Cho phép error.message nếu error đã khai báo ---
@@ -734,8 +736,10 @@ namespace Linh
             // Nếu callee là IdentifierExpr thì kiểm tra tên hàm
             if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->callee.get()))
             {
-                // Cho phép gọi hàm input hoặc type mà không cần khai báo trước (giống Python)
-                if (id->name.lexeme != "input" && id->name.lexeme != "type")
+                // Allow built-in conversion functions without declaration
+                static const std::unordered_set<std::string> builtin_funcs = {
+                    "input", "type", "str", "int", "float", "bool", "uint"};
+                if (!builtin_funcs.count(id->name.lexeme))
                 {
                     if (!is_function_declared(id->name.lexeme))
                     {

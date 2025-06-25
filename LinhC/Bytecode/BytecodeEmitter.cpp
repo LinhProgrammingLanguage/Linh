@@ -248,6 +248,18 @@ namespace Linh
     {
         if (stmt->expression)
             stmt->expression->accept(this);
+
+        // --- Sửa tại đây: Không sinh POP nếu là print(...) ---
+        auto call = dynamic_cast<AST::CallExpr *>(stmt->expression.get());
+        if (call)
+        {
+            auto id = dynamic_cast<AST::IdentifierExpr *>(call->callee.get());
+            if (id && id->name.lexeme == "print")
+            {
+                // Không sinh POP cho print(...)
+                return;
+            }
+        }
         emit_instr(OpCode::POP, {}, stmt->getLine(), stmt->getCol());
     }
 
@@ -559,7 +571,23 @@ namespace Linh
 
     std::any BytecodeEmitter::visitArrayLiteralExpr(AST::ArrayLiteralExpr *expr)
     {
-        // Not implemented yet
+        // Emit code for each element (left-to-right)
+        int count = 0;
+        for (const auto &element : expr->elements)
+        {
+            if (element)
+            {
+                element->accept(this);
+                count++;
+            }
+        }
+        // After pushing all elements, push the array as a value.
+        // You need to define a convention for arrays in your VM.
+        // Here, we push a special marker (e.g., OpCode::CALL "array" with count).
+        // This is a common approach in stack-based VMs.
+        emit_instr(OpCode::CALL, std::string("array"), expr->getLine(), expr->getCol());
+        emit_instr(OpCode::PUSH_INT, count, expr->getLine(), expr->getCol());
+        // The VM should pop 'count' elements and build an array object.
         return {};
     }
 

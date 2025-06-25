@@ -29,7 +29,7 @@ namespace Linh
         if (stack.empty())
         {
             std::cerr << "[Line 0 , Col 0] RuntimeError : VM stack underflow" << std::endl;
-            return std::monostate{};
+            return std::monostate{}; // trả về uninit
         }
         auto val = stack.back();
         stack.pop_back();
@@ -502,8 +502,32 @@ namespace Linh
                 }
                 case OpCode::PRINT:
                 {
+                    if (stack.empty())
+                    {
+                        std::cerr << "[Line " << instr.line << " , Col " << instr.col << "] RuntimeError : VM stack underflow" << std::endl;
+                        break;
+                    }
                     auto val = pop();
-                    LinhIO::linh_print(val);
+                    if (std::holds_alternative<std::monostate>(val))
+                    {
+                        std::cout << "uninit" << std::endl;
+                    }
+                    else if (std::holds_alternative<int64_t>(val))
+                    {
+                        std::cout << std::get<int64_t>(val) << std::endl;
+                    }
+                    else if (std::holds_alternative<double>(val))
+                    {
+                        std::cout << std::get<double>(val) << std::endl;
+                    }
+                    else if (std::holds_alternative<std::string>(val))
+                    {
+                        std::cout << std::get<std::string>(val) << std::endl;
+                    }
+                    else if (std::holds_alternative<bool>(val))
+                    {
+                        std::cout << (std::get<bool>(val) ? "true" : "false") << std::endl;
+                    }
                     break;
                 }
                 case OpCode::INPUT:
@@ -520,17 +544,23 @@ namespace Linh
                 }
                 case OpCode::TYPEOF:
                 {
+                    if (stack.empty())
+                    {
+                        std::cerr << "[Line " << instr.line << " , Col " << instr.col << "] RuntimeError : VM stack underflow" << std::endl;
+                        break;
+                    }
                     auto val = pop();
+                    std::string type_str = "uninit";
                     if (std::holds_alternative<int64_t>(val))
-                        std::cout << "int" << std::endl;
+                        type_str = "int";
                     else if (std::holds_alternative<double>(val))
-                        std::cout << "float" << std::endl;
+                        type_str = "float";
                     else if (std::holds_alternative<std::string>(val))
-                        std::cout << "str" << std::endl;
+                        type_str = "str";
                     else if (std::holds_alternative<bool>(val))
-                        std::cout << "bool" << std::endl;
-                    else
-                        std::cout << "unknown" << std::endl;
+                        type_str = "bool";
+                    // ... nếu có kiểu khác thì bổ sung ...
+                    push(type_str); // Đẩy lại kết quả lên stack để PRINT lấy ra
                     break;
                 }
                 case OpCode::HALT:
@@ -564,6 +594,153 @@ namespace Linh
                             bv = 0;
                         push(std::pow(av, bv));
                         break;
+                    }
+                    // --- Built-in conversion functions ---
+                    if (fname == "str")
+                    {
+                        // Pop the argument
+                        auto val = pop();
+                        std::string result;
+                        if (std::holds_alternative<std::string>(val))
+                        {
+                            result = std::get<std::string>(val);
+                        }
+                        else if (std::holds_alternative<int64_t>(val))
+                        {
+                            result = std::to_string(std::get<int64_t>(val));
+                        }
+                        else if (std::holds_alternative<double>(val))
+                        {
+                            result = std::to_string(std::get<double>(val));
+                        }
+                        else if (std::holds_alternative<bool>(val))
+                        {
+                            result = std::get<bool>(val) ? "true" : "false";
+                        }
+                        else if (std::holds_alternative<std::monostate>(val))
+                        {
+                            result = "uninit";
+                        }
+                        else
+                        {
+                            result = "<unknown>";
+                        }
+                        push(result);
+                        return;
+                    }
+                    if (fname == "uint")
+                    {
+                        auto val = pop();
+                        int64_t result = 0;
+                        if (std::holds_alternative<int64_t>(val))
+                        {
+                            result = static_cast<uint64_t>(std::get<int64_t>(val));
+                        }
+                        else if (std::holds_alternative<double>(val))
+                        {
+                            result = static_cast<uint64_t>(std::get<double>(val));
+                        }
+                        else if (std::holds_alternative<std::string>(val))
+                        {
+                            try
+                            {
+                                result = std::stoull(std::get<std::string>(val));
+                            }
+                            catch (...)
+                            {
+                                result = 0;
+                            }
+                        }
+                        else if (std::holds_alternative<bool>(val))
+                        {
+                            result = std::get<bool>(val) ? 1 : 0;
+                        }
+                        push(result);
+                        return;
+                    }
+                    if (fname == "float")
+                    {
+                        auto val = pop();
+                        double result = 0.0;
+                        if (std::holds_alternative<int64_t>(val))
+                        {
+                            result = static_cast<double>(std::get<int64_t>(val));
+                        }
+                        else if (std::holds_alternative<double>(val))
+                        {
+                            result = std::get<double>(val);
+                        }
+                        else if (std::holds_alternative<std::string>(val))
+                        {
+                            try
+                            {
+                                result = std::stod(std::get<std::string>(val));
+                            }
+                            catch (...)
+                            {
+                                result = 0.0;
+                            }
+                        }
+                        else if (std::holds_alternative<bool>(val))
+                        {
+                            result = std::get<bool>(val) ? 1.0 : 0.0;
+                        }
+                        push(result);
+                        return;
+                    }
+                    if (fname == "int")
+                    {
+                        auto val = pop();
+                        int64_t result = 0;
+                        if (std::holds_alternative<int64_t>(val))
+                        {
+                            result = std::get<int64_t>(val);
+                        }
+                        else if (std::holds_alternative<double>(val))
+                        {
+                            result = static_cast<int64_t>(std::get<double>(val));
+                        }
+                        else if (std::holds_alternative<std::string>(val))
+                        {
+                            try
+                            {
+                                result = std::stoll(std::get<std::string>(val));
+                            }
+                            catch (...)
+                            {
+                                result = 0;
+                            }
+                        }
+                        else if (std::holds_alternative<bool>(val))
+                        {
+                            result = std::get<bool>(val) ? 1 : 0;
+                        }
+                        push(result);
+                        return;
+                    }
+                    if (fname == "bool")
+                    {
+                        auto val = pop();
+                        bool result = false;
+                        if (std::holds_alternative<int64_t>(val))
+                        {
+                            result = (std::get<int64_t>(val) != 0);
+                        }
+                        else if (std::holds_alternative<double>(val))
+                        {
+                            result = (std::get<double>(val) != 0.0);
+                        }
+                        else if (std::holds_alternative<std::string>(val))
+                        {
+                            const auto &s = std::get<std::string>(val);
+                            result = (s == "true" || s == "1");
+                        }
+                        else if (std::holds_alternative<bool>(val))
+                        {
+                            result = std::get<bool>(val);
+                        }
+                        push(result);
+                        return;
                     }
                     if (!functions.count(fname))
                     {

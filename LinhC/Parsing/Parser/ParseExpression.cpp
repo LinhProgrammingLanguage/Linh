@@ -46,15 +46,7 @@ namespace Linh
             // Kiểm tra xem vế trái có phải là một lvalue hợp lệ không
             if (AST::IdentifierExpr *identifier_lvalue = dynamic_cast<AST::IdentifierExpr *>(expr.get()))
             {
-                // --- Disallow assignment to undeclared variables ---
-                // Only allow assignment if variable is declared (in semantic, but here we can check for 'var', 'vas', 'const' in this statement)
-                // In parser, we can only check for direct assignment at top-level (not in expressions), so best-effort:
-                // If this is a top-level assignment (not inside a declaration), throw error.
-                throw error(identifier_lvalue->name, "Assignment to undeclared variable '" + identifier_lvalue->name.lexeme + "'. Use 'var', 'vas', or 'const' to declare.");
-                // If you want to allow assignment only to declared variables, you must track declared names in the parser or rely on semantic phase.
-                // For now, always error here for assignment to bare identifier.
-                // If you want to allow, comment out the above line.
-
+                // --- Allow assignment to any identifier (semantic will check declaration) ---
                 if (equals_op_token.type == TokenType::ASSIGN)
                 { // Gán đơn giản '='
                     return std::make_unique<AST::AssignmentExpr>(identifier_lvalue->name, std::move(value));
@@ -326,6 +318,20 @@ namespace Linh
         // Literal (số, chuỗi, true, false, uninit), this, Identifier, ( expression )
         // Sau này có thể thêm: array literal `[]`, map literal `{}`
         // std::cout << "PARSER_EXPR_PRIMARY: primary() called. Peek: " << debug_token_info(peek()) << std::endl;
+
+        // --- Allow str, int, float, bool, uint as function calls if followed by '(' ---
+        if (check(TokenType::STR_KW) || check(TokenType::INT_KW) || check(TokenType::FLOAT_KW) ||
+            check(TokenType::BOOL_KW) || check(TokenType::UINT_KW))
+        {
+            // If next token is LPAREN, treat as identifier for function call
+            if (check_next(TokenType::LPAREN))
+            {
+                Token type_token = advance();
+                Token id_token(TokenType::IDENTIFIER, type_token.lexeme, type_token.lexeme, type_token.line, type_token.column_start);
+                return std::make_unique<AST::IdentifierExpr>(id_token);
+            }
+            // Otherwise, treat as type keyword (handled in type parser)
+        }
 
         if (match({TokenType::FALSE_KW}))
             return std::make_unique<AST::LiteralExpr>(false);

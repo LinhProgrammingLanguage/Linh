@@ -1,12 +1,18 @@
-vas a = input("Enter a value: ");
-vas b = input("Enter b value: ");
-try {
-    print(a / b)
-}
-catch (error) {
-    print("An error occurred: &{error.message}");
-}
-finally {
-    // Đoạn mã này luôn được thực thi, dù có ngoại lệ hay không
-    print("Execution completed.");
-}
+var a = 0;
+print(type(a));
+print("----------");
+a = str(a);
+print(type(a));
+print("----------");
+a = uint(a);
+print(type(a));
+print("----------");
+a = float(a);
+print(type(a));
+print("----------");
+a = int(a);
+print(type(a));
+print("----------");
+a = bool(a);
+print(type(a));
+print("----------");

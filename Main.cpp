@@ -1,3 +1,5 @@
+// NOTE: Tinh Linh does not allow the existence of null. Only 'uninit' is used as the primitive 'no-value'.
+
 #include "LinhC/Parsing/Lexer/Lexer.hpp"
 #include "LinhC/Parsing/Parser/Parser.hpp"
 #include "LinhC/Parsing/AST/ASTPrinter.hpp" // For printing AST
