@@ -23,6 +23,10 @@ namespace Linh
             return "str";
         if (std::holds_alternative<bool>(val))
             return "bool";
+        if (std::holds_alternative<Array>(val))
+            return "array";
+        if (std::holds_alternative<Map>(val))
+            return "map";
         return "unknown";
     }
 
@@ -42,6 +46,35 @@ namespace Linh
         }
         if (std::holds_alternative<bool>(val))
             return std::get<bool>(val) ? "true" : "false";
+        if (std::holds_alternative<Array>(val))
+        {
+            const auto &arr = std::get<Array>(val);
+            std::ostringstream oss;
+            oss << "[";
+            for (size_t i = 0; i < arr.size(); ++i)
+            {
+                oss << to_str(arr[i]);
+                if (i + 1 < arr.size())
+                    oss << ", ";
+            }
+            oss << "]";
+            return oss.str();
+        }
+        if (std::holds_alternative<Map>(val))
+        {
+            const auto &map = std::get<Map>(val);
+            std::ostringstream oss;
+            oss << "{";
+            size_t count = 0;
+            for (const auto &kv : map)
+            {
+                oss << kv.first << ": " << to_str(kv.second);
+                if (++count < map.size())
+                    oss << ", ";
+            }
+            oss << "}";
+            return oss.str();
+        }
         return "";
     }
 

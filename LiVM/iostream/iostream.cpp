@@ -1,19 +1,12 @@
 #include "iostream.hpp"
+#include "../type.hpp"
 
 namespace LinhIO
 {
 
-    void linh_print(const std::variant<std::monostate, int64_t, double, std::string, bool> &val)
+    void linh_print(const Linh::Value &val)
     {
-        std::cout << std::boolalpha;
-        std::visit([](auto &&arg)
-                   {
-                       using T = std::decay_t<decltype(arg)>;
-                       if constexpr (std::is_same_v<T, std::monostate>)
-                           std::cout << "uninit" << std::endl;
-                       else
-                           std::cout << arg << std::endl;
-                   }, val);
+        std::cout << std::boolalpha << Linh::to_str(val) << std::endl;
     }
 
     std::string linh_input(const std::string &prompt)

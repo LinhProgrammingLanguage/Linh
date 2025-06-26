@@ -1,7 +1,7 @@
 #pragma once
 #include "../LinhC/Bytecode/Bytecode.hpp"
+#include "Value/Value.hpp"
 #include <vector>
-#include <variant>
 #include <unordered_map>
 #include <string>
 #include <iostream>
@@ -28,7 +28,7 @@ namespace Linh
         struct CallFrame
         {
             size_t return_ip;
-            std::unordered_map<int, std::variant<std::monostate, int64_t, double, std::string, bool>> locals;
+            std::unordered_map<int, Value> locals;
         };
         std::vector<CallFrame> call_stack;
 
@@ -38,12 +38,12 @@ namespace Linh
         }
 
     private:
-        std::vector<std::variant<std::monostate, int64_t, double, std::string, bool>> stack;
-        std::unordered_map<int, std::variant<std::monostate, int64_t, double, std::string, bool>> variables;
+        std::vector<Value> stack;
+        std::unordered_map<int, Value> variables;
         size_t ip = 0; // instruction pointer
 
-        void push(const std::variant<std::monostate, int64_t, double, std::string, bool> &val);
-        std::variant<std::monostate, int64_t, double, std::string, bool> pop();
-        std::variant<std::monostate, int64_t, double, std::string, bool> peek();
+        void push(const Value &val);
+        Value pop();
+        Value peek();
     };
 }

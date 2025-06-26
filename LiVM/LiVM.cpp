@@ -19,24 +19,24 @@ namespace Linh
 
     LiVM::LiVM() {}
 
-    void LiVM::push(const std::variant<std::monostate, int64_t, double, std::string, bool> &val)
+    void LiVM::push(const Value &val)
     {
         stack.push_back(val);
     }
 
-    std::variant<std::monostate, int64_t, double, std::string, bool> LiVM::pop()
+    Value LiVM::pop()
     {
         if (stack.empty())
         {
             std::cerr << "[Line 0 , Col 0] RuntimeError : VM stack underflow" << std::endl;
-            return std::monostate{}; // trả về uninit
+            return Value{}; // trả về uninit
         }
         auto val = stack.back();
         stack.pop_back();
         return val;
     }
 
-    std::variant<std::monostate, int64_t, double, std::string, bool> LiVM::peek()
+    Value LiVM::peek()
     {
         if (stack.empty())
             throw std::runtime_error("VM stack empty");
@@ -508,26 +508,7 @@ namespace Linh
                         break;
                     }
                     auto val = pop();
-                    if (std::holds_alternative<std::monostate>(val))
-                    {
-                        std::cout << "uninit" << std::endl;
-                    }
-                    else if (std::holds_alternative<int64_t>(val))
-                    {
-                        std::cout << std::get<int64_t>(val) << std::endl;
-                    }
-                    else if (std::holds_alternative<double>(val))
-                    {
-                        std::cout << std::get<double>(val) << std::endl;
-                    }
-                    else if (std::holds_alternative<std::string>(val))
-                    {
-                        std::cout << std::get<std::string>(val) << std::endl;
-                    }
-                    else if (std::holds_alternative<bool>(val))
-                    {
-                        std::cout << (std::get<bool>(val) ? "true" : "false") << std::endl;
-                    }
+                    LinhIO::linh_print(val);
                     break;
                 }
                 case OpCode::INPUT:
@@ -559,7 +540,10 @@ namespace Linh
                         type_str = "str";
                     else if (std::holds_alternative<bool>(val))
                         type_str = "bool";
-                    // ... nếu có kiểu khác thì bổ sung ...
+                    else if (std::holds_alternative<Array>(val))
+                        type_str = "array";
+                    else if (std::holds_alternative<Map>(val))
+                        type_str = "map";
                     push(type_str); // Đẩy lại kết quả lên stack để PRINT lấy ra
                     break;
                 }
@@ -749,7 +733,7 @@ namespace Linh
                     }
                     const auto &fn = functions[fname];
                     // Pop arguments in reverse order
-                    std::vector<std::variant<std::monostate, int64_t, double, std::string, bool>> args;
+                    std::vector<Value> args;
                     for (size_t i = 0; i < fn.param_names.size(); ++i)
                         args.push_back(pop());
                     std::reverse(args.begin(), args.end());
@@ -771,16 +755,16 @@ namespace Linh
                         switch (finstr.opcode)
                         {
                         case OpCode::PUSH_INT:
-                            push(std::get<int64_t>(finstr.operand));
+                            push(Value(std::get<int64_t>(finstr.operand)));
                             break;
                         case OpCode::PUSH_FLOAT:
-                            push(std::get<double>(finstr.operand));
+                            push(Value(std::get<double>(finstr.operand)));
                             break;
                         case OpCode::PUSH_STR:
-                            push(std::get<std::string>(finstr.operand));
+                            push(Value(std::get<std::string>(finstr.operand)));
                             break;
                         case OpCode::PUSH_BOOL:
-                            push(std::get<bool>(finstr.operand));
+                            push(Value(std::get<bool>(finstr.operand)));
                             break;
                         case OpCode::POP:
                             pop();
@@ -1306,6 +1290,10 @@ namespace Linh
                                 std::cout << "str" << std::endl;
                             else if (std::holds_alternative<bool>(val))
                                 std::cout << "bool" << std::endl;
+                            else if (std::holds_alternative<Array>(val))
+                                std::cout << "array" << std::endl;
+                            else if (std::holds_alternative<Map>(val))
+                                std::cout << "map" << std::endl;
                             else
                                 std::cout << "unknown" << std::endl;
                             break;
@@ -1371,6 +1359,54 @@ namespace Linh
                     stack.push_back(stack.back());
                     std::cerr << "[DEBUG] DUP stack size after: " << stack.size() << std::endl;
                     break;
+                case OpCode::PUSH_ARRAY:
+                {
+                    int64_t n = std::get<int64_t>(instr.operand);
+                    if (n < 0 || (size_t)n > stack.size()) {
+                        std::cerr << "VM: Invalid array size for PUSH_ARRAY: " << n << std::endl;
+                        push(Value{}); // push uninit
+                        break;
+                    }
+                    Array arr;
+                    arr.reserve(n);
+                    // Pop n phần tử (theo thứ tự ngược lại)
+                    for (int64_t i = 0; i < n; ++i) {
+                        arr.push_back(pop());
+                    }
+                    // Đảo ngược lại để đúng thứ tự literal
+                    std::reverse(arr.begin(), arr.end());
+                    push(arr);
+                    break;
+                }
+                case OpCode::PUSH_MAP:
+                {
+                    int64_t n = std::get<int64_t>(instr.operand);
+                    if (n < 0 || (size_t)(2 * n) > stack.size()) {
+                        std::cerr << "VM: Invalid map size for PUSH_MAP: " << n << std::endl;
+                        push(Value{}); // push uninit
+                        break;
+                    }
+                    Map map;
+                    // Pop n cặp (value trước, key sau)
+                    for (int64_t i = 0; i < n; ++i) {
+                        Value value = pop();
+                        Value key = pop();
+                        std::string key_str;
+                        if (std::holds_alternative<std::string>(key))
+                            key_str = std::get<std::string>(key);
+                        else if (std::holds_alternative<int64_t>(key))
+                            key_str = std::to_string(std::get<int64_t>(key));
+                        else if (std::holds_alternative<double>(key))
+                            key_str = std::to_string(std::get<double>(key));
+                        else if (std::holds_alternative<bool>(key))
+                            key_str = std::get<bool>(key) ? "true" : "false";
+                        else
+                            key_str = "";
+                        map[key_str] = value;
+                    }
+                    push(map);
+                    break;
+                }
                 default:
                     // NOP or not implemented
                     break;

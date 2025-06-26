@@ -1,12 +1,14 @@
 #pragma once
+#include "Value/Value.hpp"
 #include "LiVM.hpp"
-#include <variant>
 #include <string>
 #include <cstdint>
 
 namespace Linh
 {
-    using Value = std::variant<std::monostate, int64_t, double, std::string, bool>;
+    using Value = Linh::Value;
+    using Array = Linh::Array;
+    using Map = Linh::Map;
 
     std::string type_of(const Value &val);
 

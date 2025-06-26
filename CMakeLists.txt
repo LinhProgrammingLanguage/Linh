@@ -46,10 +46,11 @@ target_include_directories(LinhSemanticLib PUBLIC
 # --- LiVM VM ---
 add_library(LiVMLib STATIC
     LiVM/LiVM.cpp
-    LiVM/iostream/iostream.cpp # Thêm dòng này để build iostream
     LiVM/type.cpp
     LiVM/Loop.cpp
+    LiVM/iostream/iostream.cpp # Thêm dòng này để build iostream
     LiVM/Math/Math.cpp
+    LiVM/Value/Value.cpp
 )
 target_include_directories(LiVMLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

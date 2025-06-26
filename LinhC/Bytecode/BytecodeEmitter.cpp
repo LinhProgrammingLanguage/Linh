@@ -571,29 +571,29 @@ namespace Linh
 
     std::any BytecodeEmitter::visitArrayLiteralExpr(AST::ArrayLiteralExpr *expr)
     {
-        // Emit code for each element (left-to-right)
-        int count = 0;
-        for (const auto &element : expr->elements)
+        // Emit code cho từng phần tử (theo thứ tự)
+        for (const auto &elem : expr->elements)
         {
-            if (element)
-            {
-                element->accept(this);
-                count++;
-            }
+            if (elem)
+                elem->accept(this);
         }
-        // After pushing all elements, push the array as a value.
-        // You need to define a convention for arrays in your VM.
-        // Here, we push a special marker (e.g., OpCode::CALL "array" with count).
-        // This is a common approach in stack-based VMs.
-        emit_instr(OpCode::CALL, std::string("array"), expr->getLine(), expr->getCol());
-        emit_instr(OpCode::PUSH_INT, count, expr->getLine(), expr->getCol());
-        // The VM should pop 'count' elements and build an array object.
+        // Sau đó emit PUSH_ARRAY với số lượng phần tử
+        emit_instr(OpCode::PUSH_ARRAY, static_cast<int64_t>(expr->elements.size()), expr->getLine(), expr->getCol());
         return {};
     }
 
     std::any BytecodeEmitter::visitMapLiteralExpr(AST::MapLiteralExpr *expr)
     {
-        // Not implemented yet
+        // Emit code cho từng key, value (theo thứ tự)
+        for (const auto &entry : expr->entries)
+        {
+            if (entry.key)
+                entry.key->accept(this);
+            if (entry.value)
+                entry.value->accept(this);
+        }
+        // Sau đó emit PUSH_MAP với số lượng cặp
+        emit_instr(OpCode::PUSH_MAP, static_cast<int64_t>(expr->entries.size()), expr->l_brace.line, expr->l_brace.column_start);
         return {};
     }
 

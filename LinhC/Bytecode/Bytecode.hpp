@@ -4,6 +4,7 @@
 #include <variant>
 #include <cstdint>
 #include <tuple>
+#include <utility>
 
 namespace Linh
 {
@@ -65,6 +66,18 @@ namespace Linh
         INPUT,
         TYPEOF,
         HALT,
+
+        // Array/Map
+        PUSH_ARRAY,
+        PUSH_MAP,
+        ARRAY_GET,
+        ARRAY_SET,
+        MAP_GET,
+        MAP_SET,
+        ARRAY_LEN,
+        ARRAY_APPEND,
+        MAP_KEYS,
+        MAP_VALUES,
 
         // --- Thêm cho try-catch-finally ---
         TRY,
