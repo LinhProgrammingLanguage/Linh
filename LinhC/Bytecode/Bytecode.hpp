@@ -13,6 +13,7 @@ namespace Linh
         // Basic stack ops
         NOP,
         PUSH_INT,
+        PUSH_UINT, // <--- Thêm dòng này để hỗ trợ uint
         PUSH_FLOAT,
         PUSH_STR,
         PUSH_BOOL,
@@ -86,6 +87,7 @@ namespace Linh
 
     using BytecodeValue = std::variant<
         int64_t,
+        uint64_t,
         double,
         std::string,
         bool,

@@ -337,17 +337,64 @@ namespace Linh
             return std::make_unique<AST::LiteralExpr>(false);
         if (match({TokenType::TRUE_KW}))
             return std::make_unique<AST::LiteralExpr>(true);
-        if (match({TokenType::UNINIT_KW}))
-            return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(previous())); // previous() là UNINIT_KW
+        if (match({TokenType::SOL_KW}))
+            return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(previous())); // previous() là SOL_KW
         if (match({TokenType::THIS_KW}))
             return std::unique_ptr<AST::Expr>(new AST::ThisExpr(previous())); // previous() là THIS_KW
 
-        if (match({TokenType::INT, TokenType::FLOAT_NUM, TokenType::STR}))
+        if (match({TokenType::INT, TokenType::UINT, TokenType::FLOAT_NUM, TokenType::STR}))
         {
             // Kiểm tra nếu tiếp theo là INTERP_START thì parse chuỗi nội suy
             if (check(TokenType::INTERP_START))
                 return parse_interpolated_string(previous());
-            return std::make_unique<AST::LiteralExpr>(previous().literal);
+            // Đảm bảo truyền đúng variant cho từng loại literal
+            const Token &tok = previous();
+            if (tok.type == TokenType::UINT)
+            {
+                uint64_t val = 0;
+                if (std::holds_alternative<uint64_t>(tok.literal))
+                {
+                    val = std::get<uint64_t>(tok.literal);
+                }
+                else if (std::holds_alternative<int64_t>(tok.literal))
+                {
+                    val = static_cast<uint64_t>(std::get<int64_t>(tok.literal));
+                }
+                return std::make_unique<AST::LiteralExpr>(val, tok);
+            }
+            if (tok.type == TokenType::INT)
+            {
+                int64_t val = 0;
+                if (std::holds_alternative<int64_t>(tok.literal))
+                {
+                    val = std::get<int64_t>(tok.literal);
+                }
+                else if (std::holds_alternative<uint64_t>(tok.literal))
+                {
+                    val = static_cast<int64_t>(std::get<uint64_t>(tok.literal));
+                }
+                return std::make_unique<AST::LiteralExpr>(val, tok);
+            }
+            if (tok.type == TokenType::FLOAT_NUM)
+            {
+                double val = 0.0;
+                if (std::holds_alternative<double>(tok.literal))
+                {
+                    val = std::get<double>(tok.literal);
+                }
+                return std::make_unique<AST::LiteralExpr>(val, tok);
+            }
+            if (tok.type == TokenType::STR)
+            {
+                std::string val;
+                if (std::holds_alternative<std::string>(tok.literal))
+                {
+                    val = std::get<std::string>(tok.literal);
+                }
+                return std::make_unique<AST::LiteralExpr>(val, tok);
+            }
+            // Fallback: truyền nguyên như cũ
+            return std::make_unique<AST::LiteralExpr>(tok.literal, tok);
         }
 
         // --- Sửa tại đây: cho phép type(...) là biểu thức ---
@@ -435,7 +482,7 @@ namespace Linh
                 // --- Sửa ở đây: nếu thiếu value thì tự động chèn UninitLiteralExpr ---
                 if (check(TokenType::COMMA) || check(TokenType::RBRACE))
                 {
-                    Token uninit_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, colon_token.line, colon_token.column_start + 1);
+                    Token uninit_token(TokenType::SOL_KW, "sol", std::monostate{}, colon_token.line, colon_token.column_start + 1);
                     AST::ExprPtr value_expr = std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_token));
                     entries.emplace_back(std::move(key_expr), colon_token, std::move(value_expr));
                 }

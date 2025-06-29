@@ -1,4 +1,4 @@
-// NOTE: Tinh Linh does not allow the existence of null. Only 'uninit' is used as the primitive 'no-value'.
+// NOTE: Tinh Linh does not allow the existence of null. Only 'sol' is used as the primitive 'no-value'.
 
 #include "LinhC/Parsing/Lexer/Lexer.hpp"
 #include "LinhC/Parsing/Parser/Parser.hpp"

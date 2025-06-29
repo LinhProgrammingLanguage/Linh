@@ -75,7 +75,73 @@ namespace Linh
             return;
         }
         // --- KẾT THÚC HỖ TRỢ NỐI CHUỖI ---
-        if (std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b))
+        // Ưu tiên xử lý uint64_t trước
+        if (std::holds_alternative<uint64_t>(a) && std::holds_alternative<uint64_t>(b))
+        {
+            uint64_t av = std::get<uint64_t>(a);
+            uint64_t bv = std::get<uint64_t>(b);
+            switch (instr.opcode)
+            {
+            case OpCode::ADD:
+                vm.push(av + bv);
+                break;
+            case OpCode::SUB:
+                vm.push(av - bv);
+                break;
+            case OpCode::MUL:
+                vm.push(av * bv);
+                break;
+            case OpCode::DIV:
+                if (bv == 0)
+                {
+                    std::string err_msg = "Division by zero (uint)";
+                    std::cerr << err_msg << std::endl;
+                    vm.push(std::monostate{});
+                    break;
+                }
+                vm.push(av / bv);
+                break;
+            case OpCode::MOD:
+                if (bv == 0)
+                {
+                    std::string err_msg = "Modulo by zero (uint)";
+                    std::cerr << err_msg << std::endl;
+                    vm.push(std::monostate{});
+                    break;
+                }
+                vm.push(av % bv);
+                break;
+            case OpCode::HASH:
+                if (bv == 0)
+                {
+                    std::string err_msg = "Floor division by zero (uint)";
+                    std::cerr << err_msg << std::endl;
+                    vm.push(std::monostate{});
+                    break;
+                }
+                // Floor division cho uint giống chia thường
+                vm.push(av / bv);
+                break;
+            case OpCode::AMP:
+                vm.push(av & bv);
+                break;
+            case OpCode::PIPE:
+                vm.push(av | bv);
+                break;
+            case OpCode::CARET:
+                vm.push(av ^ bv);
+                break;
+            case OpCode::LT_LT:
+                vm.push(av << bv);
+                break;
+            case OpCode::GT_GT:
+                vm.push(av >> bv);
+                break;
+            default:
+                break;
+            }
+        }
+        else if (std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b))
         {
             int64_t av = std::get<int64_t>(a);
             int64_t bv = std::get<int64_t>(b);
@@ -179,6 +245,60 @@ namespace Linh
                 if (bv == 0.0)
                 {
                     std::cerr << "Floor division by zero (float)" << std::endl;
+                    vm.push(std::monostate{});
+                }
+                else
+                {
+                    vm.push(std::floor(av / bv));
+                }
+                break;
+            default:
+                break;
+            }
+        }
+        else if ((std::holds_alternative<uint64_t>(a) || std::holds_alternative<double>(a)) &&
+                 (std::holds_alternative<uint64_t>(b) || std::holds_alternative<double>(b)))
+        {
+            // Nếu một bên là double thì ép sang double, còn lại đã xử lý uint64_t ở trên
+            double av = std::holds_alternative<uint64_t>(a) ? static_cast<double>(std::get<uint64_t>(a)) : std::get<double>(a);
+            double bv = std::holds_alternative<uint64_t>(b) ? static_cast<double>(std::get<uint64_t>(b)) : std::get<double>(b);
+            switch (instr.opcode)
+            {
+            case OpCode::ADD:
+                vm.push(av + bv);
+                break;
+            case OpCode::SUB:
+                vm.push(av - bv);
+                break;
+            case OpCode::MUL:
+                vm.push(av * bv);
+                break;
+            case OpCode::DIV:
+                if (bv == 0.0)
+                {
+                    std::cerr << "Division by zero (float/uint)" << std::endl;
+                    vm.push(std::monostate{});
+                }
+                else
+                {
+                    vm.push(av / bv);
+                }
+                break;
+            case OpCode::MOD:
+                if (bv == 0.0)
+                {
+                    std::cerr << "Modulo by zero (float/uint)" << std::endl;
+                    vm.push(std::monostate{});
+                }
+                else
+                {
+                    vm.push(std::fmod(av, bv));
+                }
+                break;
+            case OpCode::HASH:
+                if (bv == 0.0)
+                {
+                    std::cerr << "Floor division by zero (float/uint)" << std::endl;
                     vm.push(std::monostate{});
                 }
                 else

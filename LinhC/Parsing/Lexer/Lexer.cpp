@@ -9,7 +9,7 @@ namespace Linh
 {
     const std::unordered_map<std::string, TokenType> Lexer::s_keywords = {
         {"var", TokenType::VAR_KW}, {"vas", TokenType::VAS_KW}, {"const", TokenType::CONST_KW}, {"if", TokenType::IF_KW}, {"else", TokenType::ELSE_KW}, {"for", TokenType::FOR_KW}, {"while", TokenType::WHILE_KW}, {"func", TokenType::FUNC_KW}, {"return", TokenType::RETURN_KW}, {"true", TokenType::TRUE_KW}, {"false", TokenType::FALSE_KW}, {"int", TokenType::INT_KW}, {"uint", TokenType::UINT_KW}, {"str", TokenType::STR_KW}, {"bool", TokenType::BOOL_KW}, {"float", TokenType::FLOAT_KW}, {"map", TokenType::MAP_KW}, {"array", TokenType::ARRAY_KW}, {"void", TokenType::VOID_KW}, {"any", TokenType::ANY_KW}, {"print", TokenType::PRINT_KW}, {"break", TokenType::BREAK_KW}, {"continue", TokenType::CONTINUE_KW}, {"skip", TokenType::SKIP_KW}, {"switch", TokenType::SWITCH_KW}, {"case", TokenType::CASE_KW}, {"default", TokenType::DEFAULT_KW}, {"other", TokenType::OTHER_KW}, {"type", TokenType::TYPE_KW},
-        /*{"id", TokenType::ID_KW},*/ {"uninit", TokenType::UNINIT_KW}, // id và type không còn là keyword
+        /*{"id", TokenType::ID_KW},*/ {"sol", TokenType::SOL_KW}, // id và type không còn là keyword
         {"is", TokenType::IS_KW},
         {"not", TokenType::NOT_KW},
         {"and", TokenType::AND_KW},
@@ -192,8 +192,8 @@ namespace Linh
             return "TYPE_KW";
         case TokenType::ID_KW:
             return "ID_KW";
-        case TokenType::UNINIT_KW:
-            return "UNINIT_KW";
+        case TokenType::SOL_KW:
+            return "SOL_KW";
         case TokenType::IS_KW:
             return "IS_KW";
         case TokenType::NOT_KW:
@@ -374,18 +374,27 @@ namespace Linh
                 advance();
         }
         std::string num_str = m_source.substr(m_start_lexeme, m_current_pos - m_start_lexeme);
+        // Kiểm tra hậu tố u/U cho uint
+        bool is_uint = false;
+        if ((peek() == 'u' || peek() == 'U') && !is_float)
+        {
+            is_uint = true;
+            advance();
+        }
         try
         {
             if (is_float)
                 create_and_add_token(TokenType::FLOAT_NUM, std::stod(num_str), start_line, start_col);
+            else if (is_uint)
+                create_and_add_token(TokenType::UINT, static_cast<uint64_t>(std::stoull(num_str)), start_line, start_col);
             else
                 create_and_add_token(TokenType::INT, std::stoll(num_str), start_line, start_col);
         }
         catch (const std::out_of_range &oor)
-        { // SỬA Ở ĐÂY
-            std::string error_message = (is_float ? "Float" : "Integer") +
+        {
+            std::string error_message = (is_float ? "Float" : (is_uint ? "Uint" : "Integer")) +
                                         std::string(" literal '") + num_str +
-                                        "' out of range: " + oor.what(); // Sử dụng oor.what()
+                                        "' out of range: " + oor.what();
             m_tokens.emplace_back(TokenType::ERROR, num_str, error_message, start_line, start_col);
         }
     }

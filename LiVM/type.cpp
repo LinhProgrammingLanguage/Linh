@@ -14,9 +14,11 @@ namespace Linh
     std::string type_of(const Value &val)
     {
         if (std::holds_alternative<std::monostate>(val))
-            return "uninit";
+            return "sol";
         if (std::holds_alternative<int64_t>(val))
             return "int";
+        if (std::holds_alternative<uint64_t>(val))
+            return "uint";
         if (std::holds_alternative<double>(val))
             return "float";
         if (std::holds_alternative<std::string>(val))
@@ -33,11 +35,13 @@ namespace Linh
     std::string to_str(const Value &val)
     {
         if (std::holds_alternative<std::monostate>(val))
-            return "uninit";
+            return "sol";
         if (std::holds_alternative<std::string>(val))
             return std::get<std::string>(val);
         if (std::holds_alternative<int64_t>(val))
             return std::to_string(std::get<int64_t>(val));
+        if (std::holds_alternative<uint64_t>(val))
+            return std::to_string(std::get<uint64_t>(val));
         if (std::holds_alternative<double>(val))
         {
             std::ostringstream oss;
@@ -82,6 +86,8 @@ namespace Linh
     {
         if (std::holds_alternative<int64_t>(val))
             return std::get<int64_t>(val);
+        if (std::holds_alternative<uint64_t>(val))
+            return static_cast<int64_t>(std::get<uint64_t>(val));
         if (std::holds_alternative<double>(val))
             return static_cast<int64_t>(std::get<double>(val));
         if (std::holds_alternative<std::string>(val))
@@ -106,6 +112,8 @@ namespace Linh
             return std::get<double>(val);
         if (std::holds_alternative<int64_t>(val))
             return static_cast<double>(std::get<int64_t>(val));
+        if (std::holds_alternative<uint64_t>(val))
+            return static_cast<double>(std::get<uint64_t>(val));
         if (std::holds_alternative<std::string>(val))
         {
             try
@@ -124,6 +132,8 @@ namespace Linh
 
     uint64_t to_uint(const Value &val)
     {
+        if (std::holds_alternative<uint64_t>(val))
+            return std::get<uint64_t>(val);
         if (std::holds_alternative<int64_t>(val))
             return static_cast<uint64_t>(std::max<int64_t>(0, std::get<int64_t>(val)));
         if (std::holds_alternative<double>(val))

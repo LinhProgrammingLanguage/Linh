@@ -29,7 +29,7 @@ namespace Linh
         if (stack.empty())
         {
             std::cerr << "[Line 0 , Col 0] RuntimeError : VM stack underflow" << std::endl;
-            return Value{}; // trả về uninit
+            return Value{}; // trả về sol
         }
         auto val = stack.back();
         stack.pop_back();
@@ -53,6 +53,8 @@ namespace Linh
             return "NOP";
         case OpCode::PUSH_INT:
             return "PUSH_INT";
+        case OpCode::PUSH_UINT:
+            return "PUSH_UINT";
         case OpCode::PUSH_FLOAT:
             return "PUSH_FLOAT";
         case OpCode::PUSH_STR:
@@ -189,6 +191,10 @@ namespace Linh
                     // If you want to support int128, check here
                     // For now, always push int64_t
                     push(std::get<int64_t>(instr.operand));
+                    break;
+                case OpCode::PUSH_UINT:
+                    // Hỗ trợ uint64_t
+                    push(std::get<uint64_t>(instr.operand));
                     break;
                 case OpCode::PUSH_FLOAT:
                     // If you want to support float128, check here
@@ -531,9 +537,11 @@ namespace Linh
                         break;
                     }
                     auto val = pop();
-                    std::string type_str = "uninit";
+                    std::string type_str = "sol";
                     if (std::holds_alternative<int64_t>(val))
                         type_str = "int";
+                    else if (std::holds_alternative<uint64_t>(val))
+                        type_str = "uint";
                     else if (std::holds_alternative<double>(val))
                         type_str = "float";
                     else if (std::holds_alternative<std::string>(val))
@@ -603,7 +611,7 @@ namespace Linh
                         }
                         else if (std::holds_alternative<std::monostate>(val))
                         {
-                            result = "uninit";
+                            result = "sol";
                         }
                         else
                         {
@@ -756,6 +764,9 @@ namespace Linh
                         {
                         case OpCode::PUSH_INT:
                             push(Value(std::get<int64_t>(finstr.operand)));
+                            break;
+                        case OpCode::PUSH_UINT:
+                            push(Value(std::get<uint64_t>(finstr.operand)));
                             break;
                         case OpCode::PUSH_FLOAT:
                             push(Value(std::get<double>(finstr.operand)));
@@ -1362,7 +1373,8 @@ namespace Linh
                 case OpCode::PUSH_ARRAY:
                 {
                     int64_t n = std::get<int64_t>(instr.operand);
-                    if (n < 0 || (size_t)n > stack.size()) {
+                    if (n < 0 || (size_t)n > stack.size())
+                    {
                         std::cerr << "VM: Invalid array size for PUSH_ARRAY: " << n << std::endl;
                         push(Value{}); // push uninit
                         break;
@@ -1370,7 +1382,8 @@ namespace Linh
                     Array arr;
                     arr.reserve(n);
                     // Pop n phần tử (theo thứ tự ngược lại)
-                    for (int64_t i = 0; i < n; ++i) {
+                    for (int64_t i = 0; i < n; ++i)
+                    {
                         arr.push_back(pop());
                     }
                     // Đảo ngược lại để đúng thứ tự literal
@@ -1381,14 +1394,16 @@ namespace Linh
                 case OpCode::PUSH_MAP:
                 {
                     int64_t n = std::get<int64_t>(instr.operand);
-                    if (n < 0 || (size_t)(2 * n) > stack.size()) {
+                    if (n < 0 || (size_t)(2 * n) > stack.size())
+                    {
                         std::cerr << "VM: Invalid map size for PUSH_MAP: " << n << std::endl;
                         push(Value{}); // push uninit
                         break;
                     }
                     Map map;
                     // Pop n cặp (value trước, key sau)
-                    for (int64_t i = 0; i < n; ++i) {
+                    for (int64_t i = 0; i < n; ++i)
+                    {
                         Value value = pop();
                         Value key = pop();
                         std::string key_str;
@@ -1405,6 +1420,72 @@ namespace Linh
                         map[key_str] = value;
                     }
                     push(map);
+                    break;
+                }
+                case OpCode::ARRAY_GET:
+                {
+                    if (stack.size() < 2)
+                    {
+                        std::cerr << "VM: ARRAY_GET stack underflow" << std::endl;
+                        push(Value{}); // push sol
+                        break;
+                    }
+                    Value idx = pop();
+                    Value obj = pop();
+                    // Nếu là array
+                    if (std::holds_alternative<Array>(obj))
+                    {
+                        const auto &arr = std::get<Array>(obj);
+                        int64_t i = 0;
+                        if (std::holds_alternative<int64_t>(idx))
+                            i = std::get<int64_t>(idx);
+                        else if (std::holds_alternative<double>(idx))
+                            i = static_cast<int64_t>(std::get<double>(idx));
+                        else
+                        {
+                            push(Value{}); // sol
+                            break;
+                        }
+                        if (i < 0 || static_cast<size_t>(i) >= arr.size())
+                        {
+                            push(Value{}); // sol
+                        }
+                        else
+                        {
+                            push(arr[i]);
+                        }
+                    }
+                    else if (std::holds_alternative<Map>(obj))
+                    {
+                        const auto &map = std::get<Map>(obj);
+                        std::string key;
+                        if (std::holds_alternative<std::string>(idx))
+                            key = std::get<std::string>(idx);
+                        else if (std::holds_alternative<int64_t>(idx))
+                            key = std::to_string(std::get<int64_t>(idx));
+                        else if (std::holds_alternative<double>(idx))
+                            key = std::to_string(std::get<double>(idx));
+                        else if (std::holds_alternative<bool>(idx))
+                            key = std::get<bool>(idx) ? "true" : "false";
+                        else
+                        {
+                            push(Value{}); // sol
+                            break;
+                        }
+                        auto it = map.find(key);
+                        if (it != map.end())
+                        {
+                            push(it->second);
+                        }
+                        else
+                        {
+                            push(Value{}); // sol
+                        }
+                    }
+                    else
+                    {
+                        push(Value{}); // sol
+                    }
                     break;
                 }
                 default:

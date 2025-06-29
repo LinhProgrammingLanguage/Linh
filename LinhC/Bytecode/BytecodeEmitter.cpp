@@ -72,10 +72,10 @@ namespace Linh
     // --- ExprVisitor ---
     std::any BytecodeEmitter::visitLiteralExpr(AST::LiteralExpr *expr)
     {
-        // int<8>, int<16>, int<32>, int<64>, uint<8>, ... đều là int64_t ở runtime
-        // float<32>, float<64> đều là double ở runtime
         if (std::holds_alternative<int64_t>(expr->value))
             emit_instr(OpCode::PUSH_INT, std::get<int64_t>(expr->value), expr->getLine(), expr->getCol());
+        else if (std::holds_alternative<uint64_t>(expr->value))
+            emit_instr(OpCode::PUSH_UINT, std::get<uint64_t>(expr->value), expr->getLine(), expr->getCol());
         else if (std::holds_alternative<double>(expr->value))
             emit_instr(OpCode::PUSH_FLOAT, std::get<double>(expr->value), expr->getLine(), expr->getCol());
         else if (std::holds_alternative<std::string>(expr->value))
@@ -599,7 +599,14 @@ namespace Linh
 
     std::any BytecodeEmitter::visitSubscriptExpr(AST::SubscriptExpr *expr)
     {
-        // Not implemented yet
+        // Đánh giá object và index
+        if (expr->object)
+            expr->object->accept(this);
+        if (expr->index)
+            expr->index->accept(this);
+        // Sau khi object và index đã lên stack, quyết định loại truy cập ở runtime
+        // Để đơn giản, luôn emit ARRAY_GET (VM sẽ tự kiểm tra type object)
+        emit_instr(OpCode::ARRAY_GET, {}, expr->l_bracket_token.line, expr->l_bracket_token.column_start);
         return {};
     }
 

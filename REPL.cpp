@@ -12,82 +12,98 @@ namespace Linh
     void run_repl()
     {
         std::string line;
-        std::vector<std::string> repl_lines;
-        std::vector<Linh::AST::StmtPtr> global_stmts;
         Linh::LiVM vm;
         Linh::BytecodeEmitter emitter;
         std::unordered_map<std::string, Linh::BytecodeEmitter::FunctionInfo> function_table;
+        std::unordered_map<int, Linh::Value> global_vars; // Lưu biến toàn cục giữa các lần nhập
+        Linh::Semantic::SemanticAnalyzer analyzer;        // Move outside loop to persist state
         std::cout << "Linh REPL (type '.exit' or '.quit' to exit)\n";
         while (true)
         {
-            std::cout << ">>> ";
-            if (!std::getline(std::cin, line))
-                break;
-            if (line == ".exit" || line == ".quit")
-                break;
-            if (line.empty())
-                continue;
-
-            // --- Multi-line literal support ---
-            std::string full_stmt = line;
-            // Nếu dòng kết thúc bằng { hoặc [ (sau khoảng trắng), tiếp tục đọc cho đến khi gặp dòng chỉ chứa } hoặc ]
-            auto trim = [](const std::string &s)
+            std::string full_stmt;
+            std::string prompt = ">>> ";
+            bool first_line = true;
+            int paren = 0, brace = 0, bracket = 0;
+            bool in_single_quote = false, in_double_quote = false;
+            bool statement_complete = false;
+            do
             {
-                size_t start = s.find_first_not_of(" \t\r\n");
-                size_t end = s.find_last_not_of(" \t\r\n");
-                if (start == std::string::npos)
-                    return std::string();
-                return s.substr(start, end - start + 1);
-            };
-            std::string trimmed = trim(line);
-            bool multiline = false;
-            if (!trimmed.empty() && (trimmed.back() == '{' || trimmed.back() == '['))
-            {
-                multiline = true;
-            }
-            if (multiline)
-            {
-                std::string closing = (trimmed.back() == '{') ? "}" : "]";
-                while (true)
+                std::cout << prompt;
+                if (!std::getline(std::cin, line))
+                    return;
+                if (first_line && (line == ".exit" || line == ".quit"))
+                    return;
+                if (first_line && line.empty())
+                    continue;
+                if (!full_stmt.empty())
+                    full_stmt += "\n";
+                full_stmt += line;
+                // Smart multi-line detection
+                for (size_t i = 0; i < line.size(); ++i)
                 {
-                    std::cout << "... ";
-                    std::string next_line;
-                    if (!std::getline(std::cin, next_line))
-                        break;
-                    full_stmt += "\n" + next_line;
-                    std::string next_trim = trim(next_line);
-                    if (next_trim == closing)
-                        break;
+                    char c = line[i];
+                    if (!in_single_quote && !in_double_quote)
+                    {
+                        if (c == '(')
+                            paren++;
+                        else if (c == ')')
+                            paren--;
+                        else if (c == '{')
+                            brace++;
+                        else if (c == '}')
+                            brace--;
+                        else if (c == '[')
+                            bracket++;
+                        else if (c == ']')
+                            bracket--;
+                        else if (c == '\"')
+                            in_double_quote = true;
+                        else if (c == '\'')
+                            in_single_quote = true;
+                    }
+                    else
+                    {
+                        if (c == '\"' && in_double_quote)
+                            in_double_quote = false;
+                        if (c == '\'' && in_single_quote)
+                            in_single_quote = false;
+                    }
                 }
-            }
+                // Statement is complete if all are balanced and line ends with ; or block close or not inside quotes
+                statement_complete = (paren <= 0 && brace <= 0 && bracket <= 0 && !in_single_quote && !in_double_quote);
+                if (!statement_complete)
+                    prompt = "... ";
+                first_line = false;
+            } while (!statement_complete);
 
-            repl_lines.push_back(full_stmt);
-            std::string source;
-            for (const auto &l : repl_lines)
-                source += l + "\n";
-
-            Linh::Lexer lexer(source);
+            // Chỉ parse và emit cho dòng vừa nhập
+            Linh::Lexer lexer(full_stmt);
             auto tokens = lexer.scan_tokens();
-
             Linh::Parser parser(tokens);
             auto stmts = parser.parse();
 
-            Linh::Semantic::SemanticAnalyzer analyzer;
             analyzer.analyze(stmts, false); // REPL mode: giữ lại scope
 
             if (!analyzer.errors.empty())
             {
                 for (const auto &err : analyzer.errors)
                 {
-                    std::cerr << " [Line " << err.line << ", Col " << err.column << "]" << "SemanticError : " << err.message << "\n";
+                    std::cerr << "[" << (err.stage == ErrorStage::Lexer ? "Lexer" : err.stage == ErrorStage::Parser ? "Parser"
+                                                                                : err.stage == ErrorStage::Semantic ? "Semantic"
+                                                                                : err.stage == ErrorStage::Bytecode ? "Bytecode"
+                                                                                                                    : "Runtime")
+                              << "] [Line " << err.line << ", Col " << err.column << "] " << err.type << ": " << err.message << "\n";
                 }
                 continue;
             }
 
             emitter.emit(stmts);
-            function_table = emitter.get_functions();
+            // Cập nhật function table (giữ lại các hàm đã khai báo trước đó)
+            auto new_funcs = emitter.get_functions();
+            for (const auto &kv : new_funcs)
+                function_table[kv.first] = kv.second;
 
-            // Chuyển đổi function_table sang LiVM::Function
+            // Chuyển đổi function_table sang Linh::LiVM::Function
             std::unordered_map<std::string, Linh::LiVM::Function> vm_funcs;
             for (const auto &[name, finfo] : function_table)
             {
@@ -96,12 +112,14 @@ namespace Linh
                 f.param_names = finfo.param_names;
                 vm_funcs[name] = std::move(f);
             }
-
-            // Cập nhật function table cho VM
             vm.set_functions(vm_funcs);
 
             const auto &chunk = emitter.get_chunk();
+            // Trước khi chạy, khôi phục biến toàn cục
+            vm.set_global_variables(global_vars);
             vm.run(chunk);
+            // Sau khi chạy, lưu lại biến toàn cục
+            global_vars = vm.get_global_variables();
         }
     }
 }

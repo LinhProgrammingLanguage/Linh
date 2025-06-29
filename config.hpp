@@ -57,5 +57,5 @@ std::array<std::string, 10> linh_types =
         "map",
         // ?
         "any",
-        "uninit",
+        "sol",
         "void"};

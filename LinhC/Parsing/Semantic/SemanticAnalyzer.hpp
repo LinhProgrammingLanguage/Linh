@@ -1,5 +1,6 @@
 #pragma once
 #include "../AST/ASTNode.hpp"
+#include "../../Error.hpp"
 #include <vector>
 #include <string>
 #include <iostream>
@@ -11,19 +12,10 @@ namespace Linh
     namespace Semantic
     {
 
-        struct SemanticError
-        {
-            std::string message;
-            int line;
-            int column;
-            SemanticError(std::string msg, int l, int c)
-                : message(std::move(msg)), line(l), column(c) {}
-        };
-
         class SemanticAnalyzer : public AST::StmtVisitor, public AST::ExprVisitor
         {
         public:
-            std::vector<SemanticError> errors;
+            std::vector<Linh::Error> errors;
 
             void analyze(const AST::StmtList &stmts, bool reset_state = true);
 
@@ -63,11 +55,11 @@ namespace Linh
             std::any visitSubscriptExpr(AST::SubscriptExpr *expr) override;
             std::any visitInterpolatedStringExpr(AST::InterpolatedStringExpr *expr) override;
 
-            const std::vector<SemanticError> &get_errors() const;
+            const std::vector<Linh::Error> &get_errors() const;
 
         private:
-            bool is_uninit_type(const std::optional<AST::TypeNodePtr> &type);
-            bool is_uninit_expr(const AST::ExprPtr &expr);
+            bool is_sol_type(const std::optional<AST::TypeNodePtr> &type);
+            bool is_sol_expr(const AST::ExprPtr &expr);
 
             // --- Quản lý scope ---
             std::vector<std::unordered_map<std::string, bool>> var_scopes;

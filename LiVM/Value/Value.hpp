@@ -14,6 +14,7 @@ namespace Linh
     struct Value : public std::variant<
                        std::monostate,
                        int64_t,
+                       uint64_t,
                        double,
                        std::string,
                        bool,

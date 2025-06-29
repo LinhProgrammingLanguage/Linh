@@ -13,6 +13,7 @@ namespace Linh
     using LiteralValue = std::variant<
         std::monostate,
         int64_t,
+        uint64_t,
         double,
         std::string,
         bool>;
@@ -71,6 +72,7 @@ namespace Linh
         IDENTIFIER,
         STR,
         INT,
+        UINT, // <--- Thêm dòng này cho literal uint
         FLOAT_NUM,
 
         // Keywords
@@ -105,7 +107,7 @@ namespace Linh
         OTHER_KW,
         TYPE_KW,
         ID_KW,
-        UNINIT_KW,
+        SOL_KW,
         IMPORT_KW, // Đảm bảo dòng này nằm ở đây, đúng thứ tự với bảng từ khóa
         FROM_KW,   // Đảm bảo dòng này nằm ở đây, đúng thứ tự với bảng từ khóa
 

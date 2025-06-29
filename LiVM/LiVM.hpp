@@ -37,6 +37,10 @@ namespace Linh
             functions = funcs;
         }
 
+        // Getter/setter cho biến toàn cục REPL
+        const std::unordered_map<int, Value> &get_global_variables() const { return variables; }
+        void set_global_variables(const std::unordered_map<int, Value> &vars) { variables = vars; }
+
     private:
         std::vector<Value> stack;
         std::unordered_map<int, Value> variables;

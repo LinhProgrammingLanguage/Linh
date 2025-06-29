@@ -83,7 +83,7 @@ namespace Linh
 
         // Xử lý các từ khóa kiểu cơ bản khác không có kích thước <N>
         if (match({TokenType::STR_KW, TokenType::BOOL_KW, TokenType::VOID_KW,
-                   TokenType::ANY_KW, TokenType::UNINIT_KW}))
+                   TokenType::ANY_KW, TokenType::SOL_KW}))
         {
             return std::make_unique<AST::BaseTypeNode>(previous());
         }
@@ -180,7 +180,7 @@ namespace Linh
 
         // --- Bổ sung hỗ trợ type[] viết tắt cho array<type> ---
         // Nếu là kiểu cơ bản hoặc identifier, kiểm tra tiếp nếu có LBRACKET
-        if (match({TokenType::BOOL_KW, TokenType::VOID_KW, TokenType::ANY_KW, TokenType::UNINIT_KW}))
+        if (match({TokenType::BOOL_KW, TokenType::VOID_KW, TokenType::ANY_KW, TokenType::SOL_KW}))
         {
             Token base_token = previous();
             AST::TypeNodePtr node = std::make_unique<AST::BaseTypeNode>(base_token);

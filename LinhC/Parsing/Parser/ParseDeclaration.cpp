@@ -9,7 +9,7 @@ namespace Linh
     {
         if (!type_node)
         {
-            Token uninit_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
+            Token uninit_token(TokenType::SOL_KW, "sol", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
             return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_token));
         }
 
@@ -18,10 +18,14 @@ namespace Linh
             switch (base_type->type_keyword_token.type)
             {
             case TokenType::INT_KW:
-            case TokenType::UINT_KW:
             {
                 Token zero_int_token(TokenType::INT, "0", static_cast<int64_t>(0), reference_token_for_pos.line, reference_token_for_pos.column_start);
                 return std::unique_ptr<AST::Expr>(new AST::LiteralExpr(zero_int_token.literal));
+            }
+            case TokenType::UINT_KW:
+            {
+                Token zero_uint_token(TokenType::UINT, "0", static_cast<uint64_t>(0), reference_token_for_pos.line, reference_token_for_pos.column_start);
+                return std::unique_ptr<AST::Expr>(new AST::LiteralExpr(zero_uint_token.literal));
             }
             case TokenType::FLOAT_KW:
             {
@@ -38,22 +42,22 @@ namespace Linh
                 Token false_token(TokenType::FALSE_KW, "false", false, reference_token_for_pos.line, reference_token_for_pos.column_start);
                 return std::unique_ptr<AST::Expr>(new AST::LiteralExpr(false_token.literal));
             }
-            case TokenType::UNINIT_KW:
+            case TokenType::SOL_KW:
             {
-                Token uninit_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
+                Token uninit_token(TokenType::SOL_KW, "sol", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
                 return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_token));
             }
             case TokenType::VOID_KW:
                 throw error(base_type->type_keyword_token, "Cannot create zero value for type 'void'.");
             case TokenType::ANY_KW:
             {
-                Token uninit_any_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
+                Token uninit_any_token(TokenType::SOL_KW, "sol", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
                 return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_any_token));
             }
             default:
             { // Bao gồm IDENTIFIER
-                std::cerr << "PARSER_WARN: Cannot determine zero value for base type '" << base_type->type_keyword_token.lexeme << "' at parse time. Defaulting to uninit." << std::endl;
-                Token uninit_default_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
+                std::cerr << "PARSER_WARN: Cannot determine zero value for base type '" << base_type->type_keyword_token.lexeme << "' at parse time. Defaulting to sol." << std::endl;
+                Token uninit_default_token(TokenType::SOL_KW, "sol", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
                 return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_default_token));
             }
             }
@@ -89,7 +93,7 @@ namespace Linh
             std::cerr << "PARSER_WARN: Empty union or first type is null when creating zero value. Defaulting to uninit." << std::endl;
         }
 
-        Token uninit_fallback_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
+        Token uninit_fallback_token(TokenType::SOL_KW, "sol", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
         return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_fallback_token));
     }
 
@@ -151,9 +155,9 @@ namespace Linh
                 }
                 else
                 {
-                    Token uninit_type_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, name_token.line, name_token.column_start);
+                    Token uninit_type_token(TokenType::SOL_KW, "sol", std::monostate{}, name_token.line, name_token.column_start);
                     declared_type_node_opt = std::make_unique<AST::BaseTypeNode>(uninit_type_token);
-                    Token uninit_val_token(TokenType::UNINIT_KW, "uninit", std::monostate{}, name_token.line, name_token.column_start);
+                    Token uninit_val_token(TokenType::SOL_KW, "sol", std::monostate{}, name_token.line, name_token.column_start);
                     initializer_expr = std::make_unique<AST::UninitLiteralExpr>(uninit_val_token);
                 }
             }
@@ -164,7 +168,7 @@ namespace Linh
                     const AST::TypeNode *type_node_ptr = declared_type_node_opt.value().get();
                     if (const AST::BaseTypeNode *base_type = dynamic_cast<const AST::BaseTypeNode *>(type_node_ptr))
                     {
-                        if (base_type->type_keyword_token.type == TokenType::UNINIT_KW)
+                        if (base_type->type_keyword_token.type == TokenType::SOL_KW)
                         {
                             throw error(base_type->type_keyword_token, "'" + keyword_token.lexeme + "' cannot be explicitly declared with type 'uninit'.");
                         }
@@ -265,7 +269,7 @@ namespace Linh
                 if (const AST::BaseTypeNode *base_ret_type = dynamic_cast<const AST::BaseTypeNode *>(return_type_node.value().get()))
                 {
                     // Cho phép func trả về uninit như một kiểu dữ liệu nguyên thủy
-                    // if (base_ret_type->type_keyword_token.type == TokenType::UNINIT_KW)
+                    // if (base_ret_type->type_keyword_token.type == TokenType::SOL_KW)
                     // {
                     //     throw error(base_ret_type->type_keyword_token, "Function cannot have return type 'uninit' alone. Use 'void' if no value is returned, or a specific type.");
                     // }
