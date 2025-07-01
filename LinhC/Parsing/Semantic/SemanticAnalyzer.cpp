@@ -563,7 +563,7 @@ namespace Linh
         {
             // Allow built-in functions as identifiers without declaration
             static const std::unordered_set<std::string> builtin_funcs = {
-                "input", "type", "str", "int", "float", "bool", "uint"};
+                "input", "type", "str", "int", "float", "bool", "uint", "id"}; // Thêm "id"
             if (builtin_funcs.count(expr->name.lexeme))
             {
                 return {};
@@ -738,7 +738,7 @@ namespace Linh
             {
                 // Allow built-in conversion functions without declaration
                 static const std::unordered_set<std::string> builtin_funcs = {
-                    "input", "type", "str", "int", "float", "bool", "uint"};
+                    "input", "type", "str", "int", "float", "bool", "uint", "id"}; // Thêm "id"
                 if (!builtin_funcs.count(id->name.lexeme))
                 {
                     if (!is_function_declared(id->name.lexeme))

@@ -495,7 +495,7 @@ namespace Linh
 
     std::any BytecodeEmitter::visitCallExpr(AST::CallExpr *expr)
     {
-        // Special case: input(...) and type(...)
+        // Special case: input(...), type(...), id(...)
         if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->callee.get()))
         {
             if (id->name.lexeme == "input")
@@ -514,6 +514,15 @@ namespace Linh
                 else
                     emit_instr(OpCode::PUSH_STR, std::string(""), expr->getLine(), expr->getCol());
                 emit_instr(OpCode::TYPEOF, {}, expr->getLine(), expr->getCol());
+                return {};
+            }
+            if (id->name.lexeme == "id")
+            {
+                if (!expr->arguments.empty())
+                    expr->arguments[0]->accept(this);
+                else
+                    emit_instr(OpCode::PUSH_STR, std::string(""), expr->getLine(), expr->getCol());
+                emit_instr(OpCode::ID, {}, expr->getLine(), expr->getCol());
                 return {};
             }
             // --- User-defined function call ---

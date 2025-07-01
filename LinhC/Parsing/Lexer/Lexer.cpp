@@ -8,23 +8,7 @@
 namespace Linh
 {
     const std::unordered_map<std::string, TokenType> Lexer::s_keywords = {
-        {"var", TokenType::VAR_KW}, {"vas", TokenType::VAS_KW}, {"const", TokenType::CONST_KW}, {"if", TokenType::IF_KW}, {"else", TokenType::ELSE_KW}, {"for", TokenType::FOR_KW}, {"while", TokenType::WHILE_KW}, {"func", TokenType::FUNC_KW}, {"return", TokenType::RETURN_KW}, {"true", TokenType::TRUE_KW}, {"false", TokenType::FALSE_KW}, {"int", TokenType::INT_KW}, {"uint", TokenType::UINT_KW}, {"str", TokenType::STR_KW}, {"bool", TokenType::BOOL_KW}, {"float", TokenType::FLOAT_KW}, {"map", TokenType::MAP_KW}, {"array", TokenType::ARRAY_KW}, {"void", TokenType::VOID_KW}, {"any", TokenType::ANY_KW}, {"print", TokenType::PRINT_KW}, {"break", TokenType::BREAK_KW}, {"continue", TokenType::CONTINUE_KW}, {"skip", TokenType::SKIP_KW}, {"switch", TokenType::SWITCH_KW}, {"case", TokenType::CASE_KW}, {"default", TokenType::DEFAULT_KW}, {"other", TokenType::OTHER_KW}, {"type", TokenType::TYPE_KW},
-        /*{"id", TokenType::ID_KW},*/ {"sol", TokenType::SOL_KW}, // id và type không còn là keyword
-        {"is", TokenType::IS_KW},
-        {"not", TokenType::NOT_KW},
-        {"and", TokenType::AND_KW},
-        {"or", TokenType::OR_KW},
-        {"do", TokenType::DO_KW},
-        {"new", TokenType::NEW_KW},
-        {"delete", TokenType::DELETE_KW},
-        {"this", TokenType::THIS_KW},
-        {"throw", TokenType::THROW_KW},
-        {"try", TokenType::TRY_KW},
-        {"catch", TokenType::CATCH_KW},
-        {"finally", TokenType::FINALLY_KW},
-        {"import", TokenType::IMPORT_KW}, // <--- Ensure this is present
-        {"from", TokenType::FROM_KW}      // <--- Ensure this is present
-        // {"class", TokenType::CLASS_KW}, // Bỏ comment nếu CLASS_KW được giữ trong TokenType
+        {"var", TokenType::VAR_KW}, {"vas", TokenType::VAS_KW}, {"const", TokenType::CONST_KW}, {"if", TokenType::IF_KW}, {"else", TokenType::ELSE_KW}, {"for", TokenType::FOR_KW}, {"while", TokenType::WHILE_KW}, {"func", TokenType::FUNC_KW}, {"return", TokenType::RETURN_KW}, {"true", TokenType::TRUE_KW}, {"false", TokenType::FALSE_KW}, {"int", TokenType::INT_KW}, {"uint", TokenType::UINT_KW}, {"str", TokenType::STR_KW}, {"bool", TokenType::BOOL_KW}, {"float", TokenType::FLOAT_KW}, {"map", TokenType::MAP_KW}, {"array", TokenType::ARRAY_KW}, {"void", TokenType::VOID_KW}, {"any", TokenType::ANY_KW}, {"print", TokenType::PRINT_KW}, {"break", TokenType::BREAK_KW}, {"continue", TokenType::CONTINUE_KW}, {"skip", TokenType::SKIP_KW}, {"switch", TokenType::SWITCH_KW}, {"case", TokenType::CASE_KW}, {"default", TokenType::DEFAULT_KW}, {"other", TokenType::OTHER_KW}, {"type", TokenType::TYPE_KW}, {"sol", TokenType::SOL_KW}, {"is", TokenType::IS_KW}, {"not", TokenType::NOT_KW}, {"and", TokenType::AND_KW}, {"or", TokenType::OR_KW}, {"do", TokenType::DO_KW}, {"new", TokenType::NEW_KW}, {"delete", TokenType::DELETE_KW}, {"this", TokenType::THIS_KW}, {"throw", TokenType::THROW_KW}, {"try", TokenType::TRY_KW}, {"catch", TokenType::CATCH_KW}, {"finally", TokenType::FINALLY_KW}, {"import", TokenType::IMPORT_KW}, {"from", TokenType::FROM_KW}, {"id", TokenType::IDENTIFIER} // Thêm dòng này để id luôn là identifier (không phải keyword, nhưng nhận diện được)
     };
 
     Token::Token(TokenType type, std::string lexeme, LiteralValue literal, int line, int column_start)

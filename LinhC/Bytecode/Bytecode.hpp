@@ -82,7 +82,8 @@ namespace Linh
 
         // --- Thêm cho try-catch-finally ---
         TRY,
-        END_TRY
+        END_TRY,
+        ID // <--- Thêm opcode này cho hàm id()
     };
 
     using BytecodeValue = std::variant<

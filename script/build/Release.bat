@@ -1,10 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
-echo +-------------------------------+
-echo   Build project in Release mode
-echo +-------------------------------+
-echo.
+REM Detect number of CPU cores for parallel build
+for /f "skip=2 tokens=2 delims== " %%A in ('wmic cpu get NumberOfLogicalProcessors /value') do set NUM_CORES=%%A
+if not defined NUM_CORES set NUM_CORES=4
 
 REM Set build directory
 set BUILD_DIR=build
@@ -20,16 +19,16 @@ if not exist "%BUILD_DIR%" (
 REM Change to build directory
 cd "%BUILD_DIR%"
 
-REM Configure CMake (not using vcpkg toolchain)
-cmake ..
+REM Configure CMake for Release
+cmake -DCMAKE_BUILD_TYPE=Release ..
 if %errorlevel% neq 0 (
     echo [ERROR] CMake configuration failed!
     cd "%ROOT_DIR%"
     exit /b %errorlevel%
 )
 
-REM Build project in Release mode
-cmake --build . --config Release
+REM Build project in Release mode, parallel
+cmake --build . --config Release -- /m:%NUM_CORES%
 if %errorlevel% neq 0 (
     echo [ERROR] Build failed!
     cd "%ROOT_DIR%"
@@ -44,7 +43,7 @@ echo   Build completed successfully!
 echo +-------------------------------+
 echo.
 
-REM Automatically run Debug executable if build succeeded
+REM Automatically run Release executable if build succeeded
 set EXE_PATH=%BUILD_DIR%\Release\LinhApp.exe
 if exist "%EXE_PATH%" (
     echo Running Release build: %EXE_PATH%

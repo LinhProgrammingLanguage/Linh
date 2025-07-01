@@ -3,6 +3,8 @@
 #include "Loop.hpp"
 #include <cmath>
 #include "Math/Math.hpp" // Thêm dòng này
+#include <sstream>       // Thêm dòng này cho std::ostringstream
+#include <iomanip>
 
 struct TryFrame
 {
@@ -133,6 +135,8 @@ namespace Linh
             return "TRY";
         case OpCode::END_TRY:
             return "END_TRY";
+        case OpCode::ID:
+            return "ID";
         default:
             return "UNKNOWN";
         }
@@ -1379,15 +1383,15 @@ namespace Linh
                         push(Value{}); // push uninit
                         break;
                     }
-                    Array arr;
-                    arr.reserve(n);
+                    Array arr = std::make_shared<std::vector<Value>>();
+                    arr->reserve(n);
                     // Pop n phần tử (theo thứ tự ngược lại)
                     for (int64_t i = 0; i < n; ++i)
                     {
-                        arr.push_back(pop());
+                        arr->push_back(pop());
                     }
                     // Đảo ngược lại để đúng thứ tự literal
-                    std::reverse(arr.begin(), arr.end());
+                    std::reverse(arr->begin(), arr->end());
                     push(arr);
                     break;
                 }
@@ -1400,7 +1404,7 @@ namespace Linh
                         push(Value{}); // push uninit
                         break;
                     }
-                    Map map;
+                    Map map = std::make_shared<std::unordered_map<std::string, Value>>();
                     // Pop n cặp (value trước, key sau)
                     for (int64_t i = 0; i < n; ++i)
                     {
@@ -1417,7 +1421,7 @@ namespace Linh
                             key_str = std::get<bool>(key) ? "true" : "false";
                         else
                             key_str = "";
-                        map[key_str] = value;
+                        (*map)[key_str] = value;
                     }
                     push(map);
                     break;
@@ -1446,13 +1450,13 @@ namespace Linh
                             push(Value{}); // sol
                             break;
                         }
-                        if (i < 0 || static_cast<size_t>(i) >= arr.size())
+                        if (i < 0 || static_cast<size_t>(i) >= arr->size())
                         {
                             push(Value{}); // sol
                         }
                         else
                         {
-                            push(arr[i]);
+                            push((*arr)[i]);
                         }
                     }
                     else if (std::holds_alternative<Map>(obj))
@@ -1472,8 +1476,8 @@ namespace Linh
                             push(Value{}); // sol
                             break;
                         }
-                        auto it = map.find(key);
-                        if (it != map.end())
+                        auto it = map->find(key);
+                        if (it != map->end())
                         {
                             push(it->second);
                         }
@@ -1488,8 +1492,33 @@ namespace Linh
                     }
                     break;
                 }
+                case OpCode::ID:
+                {
+                    if (stack.empty())
+                    {
+                        push("0x0");
+                    }
+                    else
+                    {
+                        std::ostringstream oss;
+                        const Value& val = stack.back();
+                        // For Array/Map: use the address of the underlying object
+                        if (std::holds_alternative<Array>(val)) {
+                            const auto& arr = std::get<Array>(val);
+                            oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(arr.get());
+                        } else if (std::holds_alternative<Map>(val)) {
+                            const auto& map = std::get<Map>(val);
+                            oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(map.get());
+                        } else {
+                            // For primitives: use the address of the value in the stack
+                            oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&val);
+                        }
+                        push(oss.str());
+                    }
+                    break;
+                }
                 default:
-                    // NOP or not implemented
+                    ++ip;
                     break;
                 }
             }

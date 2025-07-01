@@ -55,10 +55,10 @@ namespace Linh
             const auto &arr = std::get<Array>(val);
             std::ostringstream oss;
             oss << "[";
-            for (size_t i = 0; i < arr.size(); ++i)
+            for (size_t i = 0; i < arr->size(); ++i)
             {
-                oss << to_str(arr[i]);
-                if (i + 1 < arr.size())
+                oss << to_str((*arr)[i]);
+                if (i + 1 < arr->size())
                     oss << ", ";
             }
             oss << "]";
@@ -70,10 +70,10 @@ namespace Linh
             std::ostringstream oss;
             oss << "{";
             size_t count = 0;
-            for (const auto &kv : map)
+            for (const auto &kv : *map)
             {
                 oss << kv.first << ": " << to_str(kv.second);
-                if (++count < map.size())
+                if (++count < map->size())
                     oss << ", ";
             }
             oss << "}";

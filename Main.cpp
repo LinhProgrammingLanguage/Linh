@@ -1,4 +1,18 @@
-// NOTE: Tinh Linh does not allow the existence of null. Only 'sol' is used as the primitive 'no-value'.
+/*
+<----------------Note-------------->
+// Tinh Linh is a multi-typed language supporting both static (vas) and dynamic (var) typing, as well as const.
+// Tinh Linh does not allow the existence of null. Only 'sol' is used as the primitive 'no-value'.
+//
+// The id(x) function returns the id of the value, not a unique id for each variable.
+// For primitive types (int, float, bool, string), id(x) is the same if the value is the same.
+// For array/map, id(x) is the memory address (reference), so it is the same if they refer to the same object.
+//
+// IMPORTANT: Linh is NOT Python or JavaScript. Not everything is an object.
+// Primitive types (int, uint, float, bool, str, sol) are NOT objects and do not have methods or properties.
+// Only array/map are reference types (objects), but they are not class-based objects.
+// There is no class, prototype, or inheritance system. Linh is a statically-typed, value-oriented language.
+// <---------------------------------->
+*/
 
 #include "LinhC/Parsing/Lexer/Lexer.hpp"
 #include "LinhC/Parsing/Parser/Parser.hpp"
@@ -103,15 +117,6 @@ void runSource(const std::string &source_code,
     }
     std::cout << "------------------------------------------\n";
     // -----------------------------------------------------
-
-    // Nếu function table vẫn rỗng, debug thêm:
-    if (emitter.get_functions().empty())
-    {
-        std::cout << "[DEBUG] Function table is empty after import. Possible reasons:\n";
-        std::cout << "- File Li/add.li không tồn tại hoặc không đọc được\n";
-        std::cout << "- Hàm add không được emit đúng trong BytecodeEmitter\n";
-        std::cout << "- Quá trình merge function table trong visitImportStmt không thành công\n";
-    }
 
     // --- Run VM ---
     Linh::LiVM vm;

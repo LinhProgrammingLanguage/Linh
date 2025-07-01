@@ -17,7 +17,7 @@ namespace Linh
         std::unordered_map<std::string, Linh::BytecodeEmitter::FunctionInfo> function_table;
         std::unordered_map<int, Linh::Value> global_vars; // Lưu biến toàn cục giữa các lần nhập
         Linh::Semantic::SemanticAnalyzer analyzer;        // Move outside loop to persist state
-        std::cout << "Linh REPL (type '.exit' or '.quit' to exit)\n";
+        std::cout << "Tinh Linh Programming Language\nLinh REPL (type '.exit' or '.quit' to exit)\n";
         while (true)
         {
             std::string full_stmt;

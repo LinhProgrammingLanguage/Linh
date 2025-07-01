@@ -4,6 +4,13 @@ set -e
 BUILD_DIR="build"
 ROOT_DIR="$(pwd)"
 
+# Số core để build song song
+if command -v nproc &> /dev/null; then
+    JOBS=$(nproc)
+else
+    JOBS=4
+fi
+
 # Create build directory if it doesn't exist
 if [ ! -d "$BUILD_DIR" ]; then
     mkdir "$BUILD_DIR"
@@ -12,15 +19,15 @@ fi
 cd "$BUILD_DIR"
 
 # Configure CMake (not using vcpkg toolchain)
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Debug ..
 if [ $? -ne 0 ]; then
     echo "[ERROR] CMake configuration failed!"
     cd "$ROOT_DIR"
     exit 1
 fi
 
-# Build Debug
-cmake --build . --config Debug
+# Build Debug song song
+cmake --build . --config Debug -- -j$JOBS
 if [ $? -ne 0 ]; then
     echo "[ERROR] Build failed!"
     cd "$ROOT_DIR"

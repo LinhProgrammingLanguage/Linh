@@ -163,10 +163,12 @@ namespace Linh
     void Parser::synchronize()
     {
         // Luôn advance ít nhất một lần nếu chưa ở EOF
-        if (!is_at_end())
+        bool at_end = is_at_end();
+        if (!at_end)
             advance();
+        at_end = is_at_end();
 
-        while (!is_at_end())
+        while (!at_end)
         {
             if (m_current > 0 && previous().type == TokenType::SEMICOLON)
                 return;
@@ -189,10 +191,8 @@ namespace Linh
                 break;
             }
             // Luôn advance nếu chưa ở EOF
-            if (!is_at_end())
-                advance();
-            else
-                break;
+            advance();
+            at_end = is_at_end();
         }
     }
 

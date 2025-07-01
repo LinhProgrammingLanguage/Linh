@@ -1,0 +1,3 @@
+vas a : <str,int> = "Hello, World!";
+a = 42;
+a = {"key": "value"};
