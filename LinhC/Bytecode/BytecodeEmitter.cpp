@@ -495,7 +495,7 @@ namespace Linh
 
     std::any BytecodeEmitter::visitCallExpr(AST::CallExpr *expr)
     {
-        // Special case: input(...), type(...), id(...)
+        // Special case: input(...), type(...), id(...), printf(...)
         if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->callee.get()))
         {
             if (id->name.lexeme == "input")
@@ -525,6 +525,15 @@ namespace Linh
                 emit_instr(OpCode::ID, {}, expr->getLine(), expr->getCol());
                 return {};
             }
+            if (id->name.lexeme == "printf")
+            {
+                if (!expr->arguments.empty())
+                    expr->arguments[0]->accept(this);
+                else
+                    emit_instr(OpCode::PUSH_STR, std::string(""), expr->getLine(), expr->getCol());
+                emit_instr(OpCode::PRINTF, {}, expr->getLine(), expr->getCol());
+                return {};
+            }
             // --- User-defined function call ---
             // Evaluate arguments (push in order)
             for (auto &arg : expr->arguments)
@@ -532,6 +541,95 @@ namespace Linh
                     arg->accept(this);
             emit_instr(OpCode::CALL, id->name.lexeme, expr->getLine(), expr->getCol());
             return {};
+        }
+        // Hỗ trợ a.append(x) và a.remove(x)
+        // Nếu callee là MemberExpr (giả sử có AST::MemberExpr hoặc SubscriptExpr)
+        // Đơn giản: Nếu callee là dạng a.append hoặc a.remove
+        if (auto member = dynamic_cast<AST::MemberExpr *>(expr->callee.get()))
+        {
+            // member->object: biểu thức array, member->property: tên phương thức
+            if (member->property == "append" && expr->arguments.size() == 1)
+            {
+                // Đánh giá object (array)
+                if (member->object)
+                    member->object->accept(this);
+                // Đánh giá argument (giá trị cần append)
+                expr->arguments[0]->accept(this);
+                emit_instr(OpCode::ARRAY_APPEND, {}, expr->getLine(), expr->getCol());
+                return {};
+            }
+            if (member->property == "remove" && expr->arguments.size() == 1)
+            {
+                // Đánh giá object (array)
+                if (member->object)
+                    member->object->accept(this);
+                // Đánh giá argument (giá trị cần remove)
+                expr->arguments[0]->accept(this);
+                emit_instr(OpCode::ARRAY_REMOVE, {}, expr->getLine(), expr->getCol());
+                return {};
+            }
+            if (member->property == "clear" && expr->arguments.empty())
+            {
+                if (member->object)
+                    member->object->accept(this);
+                emit_instr(OpCode::ARRAY_CLEAR, {}, expr->getLine(), expr->getCol());
+                return {};
+            }
+            if (member->property == "clone" && expr->arguments.empty())
+            {
+                if (member->object)
+                    member->object->accept(this);
+                emit_instr(OpCode::ARRAY_CLONE, {}, expr->getLine(), expr->getCol());
+                return {};
+            }
+            if (member->property == "pop")
+            {
+                if (member->object)
+                    member->object->accept(this);
+                if (expr->arguments.empty())
+                {
+                    // a.pop()
+                    emit_instr(OpCode::ARRAY_POP, {}, expr->getLine(), expr->getCol());
+                }
+                else if (expr->arguments.size() == 1)
+                {
+                    // a.pop(index)
+                    expr->arguments[0]->accept(this);
+                    emit_instr(OpCode::ARRAY_POP, {}, expr->getLine(), expr->getCol());
+                }
+                return {};
+            }
+            if (member->property == "delete" && expr->arguments.size() == 1)
+            {
+                // Đánh giá object (map)
+                if (member->object)
+                    member->object->accept(this);
+                // Đánh giá argument (key)
+                expr->arguments[0]->accept(this);
+                emit_instr(OpCode::MAP_DELETE, {}, expr->getLine(), expr->getCol());
+                return {};
+            }
+            if (member->property == "clear" && expr->arguments.empty())
+            {
+                if (member->object)
+                    member->object->accept(this);
+                emit_instr(OpCode::MAP_CLEAR, {}, expr->getLine(), expr->getCol());
+                return {};
+            }
+            if (member->property == "keys" && expr->arguments.empty())
+            {
+                if (member->object)
+                    member->object->accept(this);
+                emit_instr(OpCode::MAP_KEYS, {}, expr->getLine(), expr->getCol());
+                return {};
+            }
+            if (member->property == "values" && expr->arguments.empty())
+            {
+                if (member->object)
+                    member->object->accept(this);
+                emit_instr(OpCode::MAP_VALUES, {}, expr->getLine(), expr->getCol());
+                return {};
+            }
         }
         // Not implemented yet for other calls
         return {};
@@ -657,5 +755,52 @@ namespace Linh
     void BytecodeEmitter::visitImportStmt(AST::ImportStmt * /*stmt*/)
     {
         // Không sinh bytecode cho import (hoặc xử lý import module ở đây nếu cần)
+    }
+
+    std::any BytecodeEmitter::visitMemberExpr(AST::MemberExpr *expr)
+    {
+        // Đơn giản: chỉ cần đánh giá object (bên trái dấu chấm)
+        if (expr->object)
+            expr->object->accept(this);
+        // Không sinh bytecode cho property ở đây (xử lý trong visitCallExpr)
+        return {};
+    }
+
+    std::any BytecodeEmitter::visitMethodCallExpr(AST::MethodCallExpr *expr)
+    {
+        // Map methods: delete, clear, keys, values
+        if (expr->method_name == "delete" && expr->arguments.size() == 1) {
+            if (expr->object)
+                expr->object->accept(this);
+            expr->arguments[0]->accept(this);
+            emit_instr(OpCode::MAP_DELETE, {}, expr->getLine(), expr->getCol());
+            return {};
+        }
+        if (expr->method_name == "clear" && expr->arguments.empty()) {
+            if (expr->object)
+                expr->object->accept(this);
+            emit_instr(OpCode::MAP_CLEAR, {}, expr->getLine(), expr->getCol());
+            return {};
+        }
+        if (expr->method_name == "keys" && expr->arguments.empty()) {
+            if (expr->object)
+                expr->object->accept(this);
+            emit_instr(OpCode::MAP_KEYS, {}, expr->getLine(), expr->getCol());
+            return {};
+        }
+        if (expr->method_name == "values" && expr->arguments.empty()) {
+            if (expr->object)
+                expr->object->accept(this);
+            emit_instr(OpCode::MAP_VALUES, {}, expr->getLine(), expr->getCol());
+            return {};
+        }
+        // You can add array methods here if needed
+        // Default: just visit object and arguments (no-op)
+        if (expr->object)
+            expr->object->accept(this);
+        for (const auto &arg : expr->arguments)
+            if (arg)
+                arg->accept(this);
+        return {};
     }
 }

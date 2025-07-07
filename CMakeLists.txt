@@ -10,16 +10,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(LinhLexerLib STATIC
     LinhC/Parsing/Lexer/Lexer.cpp
 )
-target_include_directories(LinhLexerLib PUBLIC 
+target_include_directories(LinhLexerLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # --- Định nghĩa thư viện AST (cho các node và printer) ---
 # ASTNode.hpp là header-only, ASTPrinter.cpp cần được biên dịch
 add_library(LinhASTLib STATIC
-    LinhC/Parsing/AST/ASTPrinter.cpp 
+    LinhC/Parsing/AST/ASTPrinter.cpp
 )
-target_include_directories(LinhASTLib PUBLIC 
+target_include_directories(LinhASTLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR} # Để include ASTNode.hpp và Lexer.hpp (cho Token)
 )
 
@@ -31,7 +31,7 @@ add_library(LinhParserLib STATIC
     LinhC/Parsing/Parser/ParseExpression.cpp
     LinhC/Parsing/Parser/ParseType.cpp
 )
-target_include_directories(LinhParserLib PUBLIC 
+target_include_directories(LinhParserLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR} # Để include Parser.hpp, ASTNode.hpp, Lexer.hpp
 )
 
@@ -66,7 +66,7 @@ add_executable(LinhApp
     LinhC/Parsing/Semantic/SemanticAnalyzer.cpp
     LinhC/Parsing/AST/ASTPrinter.cpp
     LinhC/Bytecode/BytecodeEmitter.cpp
-    REPL.cpp # Thêm dòng này
+    REPL.cpp
 )
 target_link_libraries(LinhApp PRIVATE
     LinhLexerLib
@@ -74,11 +74,9 @@ target_link_libraries(LinhApp PRIVATE
     LinhParserLib
     LinhSemanticLib
     LiVMLib
-    # boost_multiprecision -- removed
-    # Không cần utf8cpp vì chỉ là header-only, đã include ở trên
 )
 
-if(WIN32) 
+if(WIN32)
     set(RESOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/appicon.rc")
     set(ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Linh.ico")
 
@@ -91,7 +89,7 @@ if(WIN32)
 endif()
 
 # Tối ưu hóa cho Release build
-if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /DNDEBUG")
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /Ob2 /DNDEBUG")
 else()

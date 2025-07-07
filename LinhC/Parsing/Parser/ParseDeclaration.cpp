@@ -196,18 +196,15 @@ namespace Linh
         // Cho phép kết thúc khai báo biến bằng ';', '}' hoặc EOF
         if (check(TokenType::SEMICOLON))
         {
-            consume(TokenType::SEMICOLON, "Missing ';' after variable declaration.");
+            consume(TokenType::SEMICOLON, "");
         }
-        // Cho phép kết thúc khai báo biến bằng '}', EOF, hoặc khi tiếp theo là một khai báo mới (var/vas/const/func)
-        else if (check(TokenType::RBRACE) || check(TokenType::END_OF_FILE) || check(TokenType::VAR_KW) || check(TokenType::VAS_KW) || check(TokenType::CONST_KW) || check(TokenType::FUNC_KW))
+        // Nếu là '}' hoặc EOF thì hợp lệ, không cần consume gì thêm
+        else if (check(TokenType::RBRACE) || check(TokenType::END_OF_FILE))
         {
             // Hợp lệ, không cần consume gì thêm
         }
-        else
-        {
-            // Nếu token tiếp theo không phải '}', không phải EOF, không phải khai báo mới, báo lỗi
-            throw error(peek(), "Missing ';' after variable declaration.");
-        }
+        // Nếu là token khác, cũng hợp lệ (bắt đầu statement mới), không báo lỗi
+        // (Bỏ else báo lỗi ở đây)
         // Nếu là EOF, advance để parser không bị kẹt ở cuối file
         if (check(TokenType::END_OF_FILE) && !is_at_end())
         {

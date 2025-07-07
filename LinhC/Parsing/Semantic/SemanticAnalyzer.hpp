@@ -54,6 +54,8 @@ namespace Linh
             std::any visitMapLiteralExpr(AST::MapLiteralExpr *expr) override;
             std::any visitSubscriptExpr(AST::SubscriptExpr *expr) override;
             std::any visitInterpolatedStringExpr(AST::InterpolatedStringExpr *expr) override;
+            std::any visitMemberExpr(AST::MemberExpr *expr) override;
+            std::any visitMethodCallExpr(AST::MethodCallExpr *expr) override;
 
             const std::vector<Linh::Error> &get_errors() const;
 

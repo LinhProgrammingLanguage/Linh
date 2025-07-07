@@ -5,6 +5,7 @@
 #include <algorithm>  // Có thể cần cho một số tiện ích sau này
 
 // Helper để in token cho debug (có thể giữ ở đây hoặc chuyển vào một tệp tiện ích chung)
+#ifdef _DEBUG
 static std::string debug_token_info(const Linh::Token &t)
 {
     if (t.type == Linh::TokenType::END_OF_FILE && t.lexeme.empty())
@@ -17,21 +18,26 @@ static std::string debug_token_info(const Linh::Token &t)
            ", Line: " + std::to_string(t.line) +
            ", Col: " + std::to_string(t.column_start) + ")";
 }
+#endif
 
 namespace Linh
 {
     // --- Constructor ---
     Parser::Parser(const std::vector<Token> &tokens) : m_tokens(tokens), m_current(0), m_had_error(false)
     {
+#ifdef _DEBUG
         std::cout << "PARSER_INIT: Parser initialized with " << tokens.size() << " tokens.\n";
+#endif
         if (tokens.empty() || tokens.back().type != TokenType::END_OF_FILE)
         {
             std::cerr << "PARSER_INIT_WARN: Token list is invalid or missing EOF." << std::endl;
         }
         else if (!tokens.empty())
         {
+#ifdef _DEBUG
             std::cout << "PARSER_INIT: First token: " << debug_token_info(m_tokens[0]) << std::endl;
             std::cout << "PARSER_INIT: Last token: " << debug_token_info(m_tokens.back()) << std::endl;
+#endif
         }
     }
 

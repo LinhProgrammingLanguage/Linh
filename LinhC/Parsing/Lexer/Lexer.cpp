@@ -326,7 +326,41 @@ namespace Linh
                 continue;
             }
             // --- KẾT THÚC: HỖ TRỢ CHUỖI NỘI SUY ---
-            if (quote_char != '`' && current_char == '\\' && (peek_next() == quote_char || peek_next() == '\\'))
+            // Xử lý escape sequence
+            if (current_char == '\\')
+            {
+                advance(); // consume '\\'
+                char next = peek();
+                switch (next)
+                {
+                case 'n':
+                    value_str += '\n';
+                    break;
+                case 't':
+                    value_str += '\t';
+                    break;
+                case 'r':
+                    value_str += '\r';
+                    break;
+                case '\\':
+                    value_str += '\\';
+                    break;
+                case '"':
+                    value_str += '"';
+                    break;
+                case '\'':
+                    value_str += '\'';
+                    break;
+                case '0':
+                    value_str += '\0';
+                    break;
+                default:
+                    value_str += next;
+                    break;
+                }
+                advance(); // consume escaped char
+            }
+            else if (quote_char != '`' && current_char == '\\' && (peek_next() == quote_char || peek_next() == '\\'))
             {
                 advance();
                 value_str += advance();

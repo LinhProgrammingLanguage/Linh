@@ -260,7 +260,7 @@ namespace Linh
 
     AST::ExprPtr Parser::call_or_member_access()
     {
-        // primary ( '(' arguments? ')' | '++' | '--' | '[' expression ']' | '.' IDENTIFIER )*
+        // primary ( '(' arguments? ')' | '++' | '--' | '[' expression ']' | '.' IDENTIFIER ( '(' arguments? ')' )? )*
         AST::ExprPtr expr = primary(); // Parse phần cơ bản nhất của biểu thức
 
         while (true)
@@ -281,9 +281,37 @@ namespace Linh
                 Token r_bracket_token = consume(TokenType::RBRACKET, "Thiếu ']' sau chỉ số truy cập.");
                 expr = std::unique_ptr<AST::Expr>(new AST::SubscriptExpr(std::move(expr), l_bracket_token, std::move(index_expr), r_bracket_token));
             }
-            // else if (match({TokenType::DOT})) { // Truy cập thành viên: expr.ident
-            //     expr = member_access_expression(std::move(expr)); // Sẽ thêm hàm này sau
-            // }
+            else if (match({TokenType::DOT})) // Truy cập thành viên hoặc gọi method: expr.ident hoặc expr.method(...)
+            {
+                Token dot_token = previous();
+                // Accept IDENTIFIER or DELETE_KW as property/method name
+                Token property_token;
+                if (check(TokenType::IDENTIFIER) || check(TokenType::DELETE_KW)) {
+                    property_token = advance();
+                } else {
+                    throw error(peek(), "Thiếu tên thuộc tính sau dấu '.'");
+                }
+                if (match({TokenType::LPAREN}))
+                {
+                    // Method call: expr.method(...)
+                    Token lparen_token = previous();
+                    std::vector<AST::ExprPtr> args;
+                    if (!check(TokenType::RPAREN))
+                    {
+                        do
+                        {
+                            args.push_back(expression());
+                        } while (match({TokenType::COMMA}));
+                    }
+                    Token rparen_token = consume(TokenType::RPAREN, "Thiếu dấu ')' sau danh sách tham số.");
+                    expr = std::make_unique<AST::MethodCallExpr>(std::move(expr), dot_token, property_token, lparen_token, std::move(args), rparen_token);
+                }
+                else
+                {
+                    // Chỉ truy cập thuộc tính: expr.ident
+                    expr = std::make_unique<AST::MemberExpr>(std::move(expr), dot_token, property_token);
+                }
+            }
             else
             {
                 break; // Không có toán tử call/postfix/subscript/member nào nữa

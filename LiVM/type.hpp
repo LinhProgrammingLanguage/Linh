@@ -21,4 +21,7 @@ namespace Linh
 
     // Định nghĩa hàm type() cho LiVM
     void type(LiVM &vm);
+
+    // Hàm lấy độ dài cho array, map, string
+    int64_t len(const Value &val);
 }

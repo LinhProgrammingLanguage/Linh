@@ -8,6 +8,7 @@ namespace Linh
 {
     void math_binary_op(LiVM &vm, const Instruction &instr)
     {
+#ifdef _DEBUG
         // Debug: In stack trước khi pop
         std::cerr << "[DEBUG] Stack before pop (size=" << vm.stack.size() << "): ";
         for (const auto &v : vm.stack)
@@ -24,8 +25,10 @@ namespace Linh
                 std::cerr << "(?) ";
         }
         std::cerr << std::endl;
+#endif
         auto b = vm.pop();
         auto a = vm.pop();
+#ifdef _DEBUG
         // Debug: In giá trị a, b
         std::cerr << "[DEBUG] a=";
         if (std::holds_alternative<int64_t>(a))
@@ -50,10 +53,59 @@ namespace Linh
         else
             std::cerr << "(?)";
         std::cerr << std::endl;
+#endif
+        // --- CHẶN CỘNG SAI KIỂU DỮ LIỆU ---
+        if (instr.opcode == OpCode::ADD)
+        {
+            // Nếu một trong hai toán hạng là bool thì không cho phép cộng
+            if (std::holds_alternative<bool>(a) || std::holds_alternative<bool>(b))
+            {
+#ifdef _DEBUG
+                std::cerr << "[ERROR] Invalid operand types for '+' (bool is not allowed): ";
+                if (std::holds_alternative<bool>(a))
+                    std::cerr << (std::get<bool>(a) ? "true" : "false");
+                else if (std::holds_alternative<std::string>(a))
+                    std::cerr << '"' << std::get<std::string>(a) << '"';
+                else if (std::holds_alternative<int64_t>(a))
+                    std::cerr << std::get<int64_t>(a);
+                else if (std::holds_alternative<uint64_t>(a))
+                    std::cerr << std::get<uint64_t>(a);
+                else if (std::holds_alternative<double>(a))
+                    std::cerr << std::get<double>(a);
+                else
+                    std::cerr << "(?)";
+                std::cerr << " + ";
+                if (std::holds_alternative<bool>(b))
+                    std::cerr << (std::get<bool>(b) ? "true" : "false");
+                else if (std::holds_alternative<std::string>(b))
+                    std::cerr << '"' << std::get<std::string>(b) << '"';
+                else if (std::holds_alternative<int64_t>(b))
+                    std::cerr << std::get<int64_t>(b);
+                else if (std::holds_alternative<uint64_t>(b))
+                    std::cerr << std::get<uint64_t>(b);
+                else if (std::holds_alternative<double>(b))
+                    std::cerr << std::get<double>(b);
+                else
+                    std::cerr << "(?)";
+                std::cerr << std::endl;
+#endif
+                vm.push(std::monostate{});
+                return;
+            }
+        }
         // --- HỖ TRỢ NỐI CHUỖI ---
         if (instr.opcode == OpCode::ADD &&
             (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b)))
         {
+            // Nếu một trong hai toán hạng là bool thì không cho phép nối chuỗi
+            if (std::holds_alternative<bool>(a) || std::holds_alternative<bool>(b))
+            {
+#ifdef _DEBUG
+                std::cerr << "[ERROR] Invalid operand types for string concatenation: cannot concatenate string and bool." << std::endl;
+#endif
+                vm.push(std::monostate{});
+                return;
+            }
             std::string sa, sb;
             if (std::holds_alternative<std::string>(a))
                 sa = std::get<std::string>(a);
@@ -61,16 +113,16 @@ namespace Linh
                 sa = std::to_string(std::get<int64_t>(a));
             else if (std::holds_alternative<double>(a))
                 sa = std::to_string(std::get<double>(a));
-            else if (std::holds_alternative<bool>(a))
-                sa = std::get<bool>(a) ? "true" : "false";
+            else if (std::holds_alternative<uint64_t>(a))
+                sa = std::to_string(std::get<uint64_t>(a));
             if (std::holds_alternative<std::string>(b))
                 sb = std::get<std::string>(b);
             else if (std::holds_alternative<int64_t>(b))
                 sb = std::to_string(std::get<int64_t>(b));
             else if (std::holds_alternative<double>(b))
                 sb = std::to_string(std::get<double>(b));
-            else if (std::holds_alternative<bool>(b))
-                sb = std::get<bool>(b) ? "true" : "false";
+            else if (std::holds_alternative<uint64_t>(b))
+                sb = std::to_string(std::get<uint64_t>(b));
             vm.push(sa + sb);
             return;
         }
@@ -95,7 +147,9 @@ namespace Linh
                 if (bv == 0)
                 {
                     std::string err_msg = "Division by zero (uint)";
+#ifdef _DEBUG
                     std::cerr << err_msg << std::endl;
+#endif
                     vm.push(std::monostate{});
                     break;
                 }
@@ -105,7 +159,9 @@ namespace Linh
                 if (bv == 0)
                 {
                     std::string err_msg = "Modulo by zero (uint)";
+#ifdef _DEBUG
                     std::cerr << err_msg << std::endl;
+#endif
                     vm.push(std::monostate{});
                     break;
                 }
@@ -115,7 +171,9 @@ namespace Linh
                 if (bv == 0)
                 {
                     std::string err_msg = "Floor division by zero (uint)";
+#ifdef _DEBUG
                     std::cerr << err_msg << std::endl;
+#endif
                     vm.push(std::monostate{});
                     break;
                 }
@@ -161,7 +219,9 @@ namespace Linh
                 if ((instr.opcode == OpCode::DIV || instr.opcode == OpCode::MOD) && bv == 0)
                 {
                     std::string err_msg = "Division by zero (int)";
+#ifdef _DEBUG
                     std::cerr << err_msg << std::endl;
+#endif
                     vm.push(std::monostate{});
                     break;
                 }
@@ -174,7 +234,9 @@ namespace Linh
                 if (bv == 0)
                 {
                     std::string err_msg = "Floor division by zero (int)";
+#ifdef _DEBUG
                     std::cerr << err_msg << std::endl;
+#endif
                     vm.push(std::monostate{});
                     break;
                 }
@@ -222,7 +284,9 @@ namespace Linh
             case OpCode::DIV:
                 if (bv == 0.0)
                 {
+#ifdef _DEBUG
                     std::cerr << "Division by zero (float)" << std::endl;
+#endif
                     vm.push(std::monostate{});
                 }
                 else
@@ -233,7 +297,9 @@ namespace Linh
             case OpCode::MOD:
                 if (bv == 0.0)
                 {
+#ifdef _DEBUG
                     std::cerr << "Modulo by zero (float)" << std::endl;
+#endif
                     vm.push(std::monostate{});
                 }
                 else
@@ -244,7 +310,9 @@ namespace Linh
             case OpCode::HASH:
                 if (bv == 0.0)
                 {
+#ifdef _DEBUG
                     std::cerr << "Floor division by zero (float)" << std::endl;
+#endif
                     vm.push(std::monostate{});
                 }
                 else
@@ -276,7 +344,9 @@ namespace Linh
             case OpCode::DIV:
                 if (bv == 0.0)
                 {
+#ifdef _DEBUG
                     std::cerr << "Division by zero (float/uint)" << std::endl;
+#endif
                     vm.push(std::monostate{});
                 }
                 else
@@ -287,7 +357,9 @@ namespace Linh
             case OpCode::MOD:
                 if (bv == 0.0)
                 {
+#ifdef _DEBUG
                     std::cerr << "Modulo by zero (float/uint)" << std::endl;
+#endif
                     vm.push(std::monostate{});
                 }
                 else
@@ -298,7 +370,9 @@ namespace Linh
             case OpCode::HASH:
                 if (bv == 0.0)
                 {
+#ifdef _DEBUG
                     std::cerr << "Floor division by zero (float/uint)" << std::endl;
+#endif
                     vm.push(std::monostate{});
                 }
                 else
@@ -312,7 +386,9 @@ namespace Linh
         }
         else
         {
+#ifdef _DEBUG
             std::cerr << "Invalid operand types for arithmetic" << std::endl;
+#endif
             vm.push(std::monostate{});
         }
     }

@@ -62,7 +62,9 @@ void runFile(const std::string &filename)
     std::ifstream file(filename);
     if (!file)
     {
+#ifdef _DEBUG
         std::cerr << "Could not open file: " << filename << std::endl;
+#endif
         return;
     }
     std::string line, source;
@@ -89,7 +91,9 @@ void runSource(const std::string &source_code,
     Linh::AST::StmtList ast = parser.parse();
     if (parser.had_error())
     {
+#ifdef _DEBUG
         std::cerr << "Lỗi cú pháp, dừng thực thi." << std::endl;
+#endif
         return;
     }
 
@@ -99,23 +103,27 @@ void runSource(const std::string &source_code,
     sema.analyze(ast);
     if (!sema.errors.empty())
     {
+#ifdef _DEBUG
         for (const auto &err : sema.errors)
         {
             std::cerr << "[Line " << err.line << ", Col " << err.column << "] SemanticError : " << err.message << std::endl;
         }
         std::cerr << "Có lỗi semantic, dừng thực thi." << std::endl;
+#endif
         return;
     }
     emitter.emit(ast);
     g_main_emitter = nullptr; // Đặt lại sau khi xong
 
     // --- Debug: In ra danh sách function sau khi merge ---
+#ifdef _DEBUG
     std::cout << "\n--- Function Table After Import Merge ---\n";
     for (const auto &kv : emitter.get_functions())
     {
         std::cout << "Function: " << kv.first << ", param_count: " << kv.second.param_names.size() << "\n";
     }
     std::cout << "------------------------------------------\n";
+#endif
     // -----------------------------------------------------
 
     // --- Run VM ---
@@ -135,8 +143,10 @@ void runSource(const std::string &source_code,
 
     vm.run(emitter.get_chunk());
 
-    // Debug: print VM stack and variables after execution (optional)
+    // --- Debug: print VM stack and variables after execution (optional)
+#ifdef _DEBUG
     // (You can add methods to LiVM to expose stack/vars for debugging if needed)
+#endif
 
     std::cout << "\nParse succeeded!" << std::endl;
 }

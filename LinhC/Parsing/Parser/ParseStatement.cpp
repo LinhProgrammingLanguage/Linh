@@ -5,6 +5,7 @@
 #include <sstream>    // Thêm dòng này để dùng std::ostringstream
 
 // --- Thêm hàm debug_token_info tại đây ---
+#ifdef _DEBUG
 static std::string debug_token_info(const Linh::Token &t)
 {
     std::ostringstream oss;
@@ -13,6 +14,7 @@ static std::string debug_token_info(const Linh::Token &t)
         << ", Col: " << t.column_start << ")";
     return oss.str();
 }
+#endif
 
 // Nếu bạn có hàm debug_token_info và muốn sử dụng ở đây,
 // bạn có thể include tệp chứa nó hoặc định nghĩa lại ở đây.
@@ -67,15 +69,11 @@ namespace Linh
     AST::StmtPtr Parser::print_statement()
     {
         Token keyword = previous(); // previous() là PRINT_KW
-        std::cout << "[DEBUG][PARSER] Enter print_statement at token: " << debug_token_info(peek()) << std::endl;
         consume(TokenType::LPAREN, "Thiếu '(' sau 'print'.");
-        std::cout << "[DEBUG][PARSER] After consume LPAREN, next token: " << debug_token_info(peek()) << std::endl;
         AST::ExprPtr value = expression();
-        std::cout << "[DEBUG][PARSER] After parse expression, next token: " << debug_token_info(peek()) << std::endl;
         consume(TokenType::RPAREN, "Thiếu ')' sau đối số của print.");
-        std::cout << "[DEBUG][PARSER] After consume RPAREN, next token: " << debug_token_info(peek()) << std::endl;
-        consume(TokenType::SEMICOLON, "Thiếu ';' sau câu lệnh print.");
-        std::cout << "[DEBUG][PARSER] After consume SEMICOLON, next token: " << debug_token_info(peek()) << std::endl;
+        if (check(TokenType::SEMICOLON))
+            consume(TokenType::SEMICOLON, "");
         return std::make_unique<AST::PrintStmt>(std::move(keyword), std::move(value));
     }
 
@@ -84,8 +82,6 @@ namespace Linh
         // Hàm này được gọi SAU KHI LBRACE đã được consume.
         // previous() sẽ là LBRACE đó.
         Token opening_brace_for_this_block = previous();
-        // std::cout << "PARSER_BLOCK: block() called. Opening brace: " << debug_token_info(opening_brace_for_this_block)
-        //           << " (should be LBRACE from caller)" << std::endl;
 
         AST::StmtList statements_in_block;
         while (!check(TokenType::RBRACE) && !is_at_end())
@@ -103,7 +99,6 @@ namespace Linh
     AST::StmtPtr Parser::if_statement()
     {
         Token keyword_if = previous(); // IF_KW
-        // std::cout << "PARSER_IF: if_statement() for " << debug_token_info(keyword_if) << ". Peek: " << debug_token_info(peek()) << std::endl;
         consume(TokenType::LPAREN, "Thiếu '(' sau 'if'.");
         AST::ExprPtr condition = expression();
         consume(TokenType::RPAREN, "Thiếu ')' sau điều kiện của if.");
@@ -141,7 +136,8 @@ namespace Linh
         consume(TokenType::LPAREN, "Thiếu '(' sau 'while' trong do-while.");
         AST::ExprPtr condition = expression();
         consume(TokenType::RPAREN, "Thiếu ')' sau điều kiện do-while.");
-        consume(TokenType::SEMICOLON, "Thiếu ';' sau câu lệnh do-while.");
+        if (check(TokenType::SEMICOLON))
+            consume(TokenType::SEMICOLON, "");
         return std::make_unique<AST::DoWhileStmt>(keyword_do, std::move(body), keyword_while_after_body, std::move(condition));
     }
 
@@ -290,7 +286,8 @@ namespace Linh
     {
         Token keyword_del = previous();             // DELETE_KW
         AST::ExprPtr expr_to_delete = expression(); // Parse biểu thức cần delete
-        consume(TokenType::SEMICOLON, "Thiếu ';' sau 'delete'.");
+        if (check(TokenType::SEMICOLON))
+            consume(TokenType::SEMICOLON, "");
         return std::make_unique<AST::DeleteStmt>(keyword_del, std::move(expr_to_delete));
     }
 
@@ -298,7 +295,8 @@ namespace Linh
     {
         Token keyword_throw_stmt = previous();      // THROW_KW
         AST::ExprPtr exception_expr = expression(); // Parse biểu thức ném ra
-        consume(TokenType::SEMICOLON, "Thiếu ';' sau 'throw'.");
+        if (check(TokenType::SEMICOLON))
+            consume(TokenType::SEMICOLON, "");
         return std::make_unique<AST::ThrowStmt>(std::move(keyword_throw_stmt), std::move(exception_expr));
     }
 
@@ -371,21 +369,24 @@ namespace Linh
         { // Nếu không phải là ';' ngay, thì có giá trị trả về
             value = expression();
         }
-        consume(TokenType::SEMICOLON, "Thiếu ';' sau return.");
+        if (check(TokenType::SEMICOLON))
+            consume(TokenType::SEMICOLON, "");
         return std::make_unique<AST::ReturnStmt>(std::move(keyword), std::move(value));
     }
 
     AST::StmtPtr Parser::break_statement()
     {
         Token keyword = previous(); // BREAK_KW
-        consume(TokenType::SEMICOLON, "Thiếu ';' sau 'break'.");
+        if (check(TokenType::SEMICOLON))
+            consume(TokenType::SEMICOLON, "");
         return std::make_unique<AST::BreakStmt>(std::move(keyword));
     }
 
     AST::StmtPtr Parser::continue_statement()
     {                               // 'skip' keyword
         Token keyword = previous(); // SKIP_KW
-        consume(TokenType::SEMICOLON, "Thiếu ';' sau 'skip'.");
+        if (check(TokenType::SEMICOLON))
+            consume(TokenType::SEMICOLON, "");
         return std::make_unique<AST::ContinueStmt>(std::move(keyword));
     }
 
@@ -393,18 +394,12 @@ namespace Linh
     {
         // std::cout << "PARSER_EXPR_STMT: expression_statement() called. Peek: " << debug_token_info(peek()) << std::endl;
         AST::ExprPtr expr = expression();
-        // std::cout << "PARSER_EXPR_STMT: Parsed expression. Consuming SEMICOLON. Peek: " << debug_token_info(peek()) << std::endl;
-        // Sửa ở đây: Cho phép kết thúc statement bằng '}' mà không cần ';'
+        // Cho phép ; tùy chọn: nếu có thì consume, nếu không thì vẫn hợp lệ
         if (check(TokenType::SEMICOLON))
         {
-            consume(TokenType::SEMICOLON, "Thiếu ';' sau biểu thức.");
+            consume(TokenType::SEMICOLON, "");
         }
-        else if (!check(TokenType::RBRACE))
-        {
-            // Nếu không phải là '}' thì mới báo lỗi thiếu ';'
-            throw error(peek(), "Thiếu ';' sau biểu thức.");
-        }
-        // std::cout << "PARSER_EXPR_STMT: Returning ExpressionStmt." << std::endl;
+        // Không cần else báo lỗi nữa, chỉ cần return luôn
         return std::make_unique<AST::ExpressionStmt>(std::move(expr));
     }
 

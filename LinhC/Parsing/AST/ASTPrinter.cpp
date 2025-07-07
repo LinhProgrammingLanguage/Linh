@@ -645,5 +645,16 @@ namespace Linh
             return temp_builder.str();
         }
 
+        std::any ASTPrinter::visitMethodCallExpr(MethodCallExpr *expr)
+        {
+            // In dạng: (method-call object method_name ...args)
+            std::ostringstream oss;
+            oss << "(method-call " << print_expr(expr->object.get()) << " ." << expr->method_name;
+            for (const auto &arg : expr->arguments)
+                oss << " " << print_expr(arg.get());
+            oss << ")";
+            return oss.str();
+        }
+
     } // namespace AST
 } // namespace Linh

@@ -1,0 +1,13 @@
+var a = [1,2,3]
+print(a)
+print(len(a))
+a.append(4)
+print(a)
+a.remove(4)
+print(a)
+var a2 = a.clone()
+print(a2)
+a.pop(1)
+print(a)
+a.clear()
+print(a)

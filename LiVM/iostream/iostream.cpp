@@ -6,7 +6,13 @@ namespace LinhIO
 
     void linh_print(const Linh::Value &val)
     {
-        std::cout << std::boolalpha << Linh::to_str(val) << std::endl;
+        // Prefer using \n instead of std::endl for better performance
+        std::cout << std::boolalpha << Linh::to_str(val) << "\n";
+    }
+
+    void linh_printf(const Linh::Value &val)
+    {
+        std::cout << std::boolalpha << Linh::to_str(val);
     }
 
     std::string linh_input(const std::string &prompt)

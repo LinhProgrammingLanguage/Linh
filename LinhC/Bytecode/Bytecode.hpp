@@ -67,8 +67,7 @@ namespace Linh
         INPUT,
         TYPEOF,
         HALT,
-
-        // Array/Map
+        PRINTF, // Thêm opcode PRINTF cho hàm printf của LinhC
         PUSH_ARRAY,
         PUSH_MAP,
         ARRAY_GET,
@@ -77,8 +76,14 @@ namespace Linh
         MAP_SET,
         ARRAY_LEN,
         ARRAY_APPEND,
+        ARRAY_REMOVE, // <--- Thêm dòng này
+        ARRAY_CLEAR,  // <--- Thêm opcode cho clear()
+        ARRAY_CLONE,  // <--- Thêm opcode cho clone()
+        ARRAY_POP,    // <--- Thêm opcode cho pop()
         MAP_KEYS,
         MAP_VALUES,
+        MAP_DELETE, // Xóa 1 key khỏi map
+        MAP_CLEAR,  // Xóa toàn bộ map
 
         // --- Thêm cho try-catch-finally ---
         TRY,

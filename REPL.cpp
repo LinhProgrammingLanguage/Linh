@@ -86,14 +86,16 @@ namespace Linh
 
             if (!analyzer.errors.empty())
             {
+#ifdef _DEBUG
                 for (const auto &err : analyzer.errors)
                 {
                     std::cerr << "[" << (err.stage == ErrorStage::Lexer ? "Lexer" : err.stage == ErrorStage::Parser ? "Parser"
                                                                                 : err.stage == ErrorStage::Semantic ? "Semantic"
                                                                                 : err.stage == ErrorStage::Bytecode ? "Bytecode"
-                                                                                                                    : "Runtime")
-                              << "] [Line " << err.line << ", Col " << err.column << "] " << err.type << ": " << err.message << "\n";
+                                                                                                                    : "Unknown")
+                              << "] " << err.message << std::endl;
                 }
+#endif
                 continue;
             }
 

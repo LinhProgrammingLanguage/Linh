@@ -36,6 +36,7 @@ namespace Linh
             std::any visitMapLiteralExpr(MapLiteralExpr *expr) override;
             std::any visitSubscriptExpr(SubscriptExpr *expr) override; // MỚI
             std::any visitInterpolatedStringExpr(InterpolatedStringExpr *expr) override;
+            std::any visitMethodCallExpr(MethodCallExpr *expr) override; // <--- Thêm dòng này
 
             // StmtVisitor implementations
             void visitExpressionStmt(ExpressionStmt *stmt) override;

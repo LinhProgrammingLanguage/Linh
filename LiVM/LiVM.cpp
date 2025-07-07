@@ -5,6 +5,7 @@
 #include "Math/Math.hpp" // Thêm dòng này
 #include <sstream>       // Thêm dòng này cho std::ostringstream
 #include <iomanip>
+#include "type.hpp"
 
 struct TryFrame
 {
@@ -137,6 +138,32 @@ namespace Linh
             return "END_TRY";
         case OpCode::ID:
             return "ID";
+        case OpCode::PUSH_ARRAY:
+            return "PUSH_ARRAY";
+        case OpCode::PUSH_MAP:
+            return "PUSH_MAP";
+        case OpCode::ARRAY_GET:
+            return "ARRAY_GET";
+        case OpCode::ARRAY_SET:
+            return "ARRAY_SET";
+        case OpCode::MAP_GET:
+            return "MAP_GET";
+        case OpCode::MAP_SET:
+            return "MAP_SET";
+        case OpCode::ARRAY_LEN:
+            return "ARRAY_LEN";
+        case OpCode::ARRAY_APPEND:
+            return "ARRAY_APPEND";
+        case OpCode::MAP_KEYS:
+            return "MAP_KEYS";
+        case OpCode::MAP_VALUES:
+            return "MAP_VALUES";
+        case OpCode::ARRAY_CLEAR:
+            return "ARRAY_CLEAR";
+        case OpCode::ARRAY_CLONE:
+            return "ARRAY_CLONE";
+        case OpCode::ARRAY_POP:
+            return "ARRAY_POP";
         default:
             return "UNKNOWN";
         }
@@ -147,6 +174,7 @@ namespace Linh
         ip = 0;
         std::vector<TryFrame> try_stack;
 
+#ifdef _DEBUG
         // --- Print full instruction list for debugging ---
         std::cerr << "=== VM Bytecode Dump ===" << std::endl;
         for (size_t i = 0; i < chunk.size(); ++i)
@@ -167,12 +195,14 @@ namespace Linh
             std::cerr << std::endl;
         }
         std::cerr << "=== End Bytecode Dump ===" << std::endl;
+#endif
 
         while (ip < chunk.size())
         {
             const auto &instr = chunk[ip];
             try
             {
+#ifdef _DEBUG
                 // Debug: In thông tin opcode, operand, stack size
                 std::cerr << "[DEBUG][ip=" << ip << "] OpCode: " << static_cast<int>(instr.opcode)
                           << " (" << opcode_name(instr.opcode) << ")"
@@ -188,7 +218,7 @@ namespace Linh
                 else
                     std::cerr << "(tuple/other)";
                 std::cerr << ", Stack size: " << stack.size() << std::endl;
-
+#endif
                 switch (instr.opcode)
                 {
                 case OpCode::PUSH_INT:
@@ -514,11 +544,22 @@ namespace Linh
                 {
                     if (stack.empty())
                     {
+                        // Nếu stack rỗng, tự động push sol để không lỗi underflow
+                        stack.push_back(std::monostate{});
+                    }
+                    auto val = pop();
+                    LinhIO::linh_print(val);
+                    break;
+                }
+                case OpCode::PRINTF:
+                {
+                    if (stack.empty())
+                    {
                         std::cerr << "[Line " << instr.line << " , Col " << instr.col << "] RuntimeError : VM stack underflow" << std::endl;
                         break;
                     }
                     auto val = pop();
-                    LinhIO::linh_print(val);
+                    LinhIO::linh_printf(val);
                     break;
                 }
                 case OpCode::INPUT:
@@ -592,151 +633,50 @@ namespace Linh
                         break;
                     }
                     // --- Built-in conversion functions ---
+                    if (fname == "sol")
+                    {
+                        // Bất kỳ giá trị nào truyền vào cũng trả về sol (std::monostate)
+                        if (!stack.empty())
+                            pop();
+                        push(std::monostate{});
+                        break;
+                    }
                     if (fname == "str")
                     {
-                        // Pop the argument
                         auto val = pop();
-                        std::string result;
-                        if (std::holds_alternative<std::string>(val))
-                        {
-                            result = std::get<std::string>(val);
-                        }
-                        else if (std::holds_alternative<int64_t>(val))
-                        {
-                            result = std::to_string(std::get<int64_t>(val));
-                        }
-                        else if (std::holds_alternative<double>(val))
-                        {
-                            result = std::to_string(std::get<double>(val));
-                        }
-                        else if (std::holds_alternative<bool>(val))
-                        {
-                            result = std::get<bool>(val) ? "true" : "false";
-                        }
-                        else if (std::holds_alternative<std::monostate>(val))
-                        {
-                            result = "sol";
-                        }
-                        else
-                        {
-                            result = "<unknown>";
-                        }
-                        push(result);
-                        return;
+                        push(Linh::to_str(val));
+                        break;
                     }
                     if (fname == "uint")
                     {
                         auto val = pop();
-                        int64_t result = 0;
-                        if (std::holds_alternative<int64_t>(val))
-                        {
-                            result = static_cast<uint64_t>(std::get<int64_t>(val));
-                        }
-                        else if (std::holds_alternative<double>(val))
-                        {
-                            result = static_cast<uint64_t>(std::get<double>(val));
-                        }
-                        else if (std::holds_alternative<std::string>(val))
-                        {
-                            try
-                            {
-                                result = std::stoull(std::get<std::string>(val));
-                            }
-                            catch (...)
-                            {
-                                result = 0;
-                            }
-                        }
-                        else if (std::holds_alternative<bool>(val))
-                        {
-                            result = std::get<bool>(val) ? 1 : 0;
-                        }
-                        push(result);
-                        return;
+                        push(static_cast<uint64_t>(Linh::to_uint(val)));
+                        break;
                     }
                     if (fname == "float")
                     {
                         auto val = pop();
-                        double result = 0.0;
-                        if (std::holds_alternative<int64_t>(val))
-                        {
-                            result = static_cast<double>(std::get<int64_t>(val));
-                        }
-                        else if (std::holds_alternative<double>(val))
-                        {
-                            result = std::get<double>(val);
-                        }
-                        else if (std::holds_alternative<std::string>(val))
-                        {
-                            try
-                            {
-                                result = std::stod(std::get<std::string>(val));
-                            }
-                            catch (...)
-                            {
-                                result = 0.0;
-                            }
-                        }
-                        else if (std::holds_alternative<bool>(val))
-                        {
-                            result = std::get<bool>(val) ? 1.0 : 0.0;
-                        }
-                        push(result);
-                        return;
+                        push(Linh::to_float(val));
+                        break;
                     }
                     if (fname == "int")
                     {
                         auto val = pop();
-                        int64_t result = 0;
-                        if (std::holds_alternative<int64_t>(val))
-                        {
-                            result = std::get<int64_t>(val);
-                        }
-                        else if (std::holds_alternative<double>(val))
-                        {
-                            result = static_cast<int64_t>(std::get<double>(val));
-                        }
-                        else if (std::holds_alternative<std::string>(val))
-                        {
-                            try
-                            {
-                                result = std::stoll(std::get<std::string>(val));
-                            }
-                            catch (...)
-                            {
-                                result = 0;
-                            }
-                        }
-                        else if (std::holds_alternative<bool>(val))
-                        {
-                            result = std::get<bool>(val) ? 1 : 0;
-                        }
-                        push(result);
-                        return;
+                        push(Linh::to_int(val));
+                        break;
                     }
                     if (fname == "bool")
                     {
                         auto val = pop();
-                        bool result = false;
-                        if (std::holds_alternative<int64_t>(val))
-                        {
-                            result = (std::get<int64_t>(val) != 0);
-                        }
-                        else if (std::holds_alternative<double>(val))
-                        {
-                            result = (std::get<double>(val) != 0.0);
-                        }
-                        else if (std::holds_alternative<std::string>(val))
-                        {
-                            const auto &s = std::get<std::string>(val);
-                            result = (s == "true" || s == "1");
-                        }
-                        else if (std::holds_alternative<bool>(val))
-                        {
-                            result = std::get<bool>(val);
-                        }
+                        push(Linh::to_bool(val));
+                        break;
+                    }
+                    if (fname == "len")
+                    {
+                        auto val = pop();
+                        int64_t result = Linh::len(val);
                         push(result);
-                        return;
+                        break; // Đổi từ return sang break để tiếp tục thực thi opcode tiếp theo
                     }
                     if (!functions.count(fname))
                     {
@@ -1282,6 +1222,12 @@ namespace Linh
                             LinhIO::linh_print(val);
                             break;
                         }
+                        case OpCode::PRINTF:
+                        {
+                            auto val = pop();
+                            LinhIO::linh_printf(val);
+                            break;
+                        }
                         case OpCode::INPUT:
                         {
                             auto prompt = pop();
@@ -1501,19 +1447,367 @@ namespace Linh
                     else
                     {
                         std::ostringstream oss;
-                        const Value& val = stack.back();
+                        const Value &val = stack.back();
                         // For Array/Map: use the address of the underlying object
-                        if (std::holds_alternative<Array>(val)) {
-                            const auto& arr = std::get<Array>(val);
+                        if (std::holds_alternative<Array>(val))
+                        {
+                            const auto &arr = std::get<Array>(val);
                             oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(arr.get());
-                        } else if (std::holds_alternative<Map>(val)) {
-                            const auto& map = std::get<Map>(val);
+                        }
+                        else if (std::holds_alternative<Map>(val))
+                        {
+                            const auto &map = std::get<Map>(val);
                             oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(map.get());
-                        } else {
+                        }
+                        else
+                        {
                             // For primitives: use the address of the value in the stack
                             oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&val);
                         }
                         push(oss.str());
+                    }
+                    break;
+                }
+                case OpCode::ARRAY_APPEND:
+                {
+                    if (stack.size() < 2)
+                    {
+                        std::cerr << "VM: ARRAY_APPEND stack underflow" << std::endl;
+                        push(Value{}); // push sol
+                        break;
+                    }
+                    Value val = pop();
+                    Value arr_val = pop();
+                    if (std::holds_alternative<Array>(arr_val))
+                    {
+                        auto arr = std::get<Array>(arr_val);
+                        arr->push_back(val);
+                        push(arr); // push lại array
+                    }
+                    else
+                    {
+                        std::cerr << "VM: ARRAY_APPEND target is not array" << std::endl;
+                        push(Value{}); // push sol
+                    }
+                    break;
+                }
+                case OpCode::ARRAY_REMOVE:
+                {
+                    if (stack.size() < 2)
+                    {
+                        std::cerr << "VM: ARRAY_REMOVE stack underflow" << std::endl;
+                        push(Value{}); // push sol
+                        break;
+                    }
+                    Value val = pop();
+                    Value arr_val = pop();
+                    if (std::holds_alternative<Array>(arr_val))
+                    {
+                        auto arr = std::get<Array>(arr_val);
+                        // Tìm và xóa phần tử đầu tiên == val
+                        auto it = std::find_if(arr->begin(), arr->end(), [&](const Value &v)
+                                               {
+                            // So sánh giá trị (chỉ hỗ trợ int, uint, double, string, bool)
+                            if (v.index() != val.index()) return false;
+                            if (std::holds_alternative<int64_t>(v))
+                                return std::get<int64_t>(v) == std::get<int64_t>(val);
+                            if (std::holds_alternative<uint64_t>(v))
+                                return std::get<uint64_t>(v) == std::get<uint64_t>(val);
+                            if (std::holds_alternative<double>(v))
+                                return std::get<double>(v) == std::get<double>(val);
+                            if (std::holds_alternative<std::string>(v))
+                                return std::get<std::string>(v) == std::get<std::string>(val);
+                            if (std::holds_alternative<bool>(v))
+                                return std::get<bool>(v) == std::get<bool>(val);
+                            return false; });
+                        if (it != arr->end())
+                            arr->erase(it);
+                        push(arr); // push lại array
+                    }
+                    else
+                    {
+                        std::cerr << "VM: ARRAY_REMOVE target is not array" << std::endl;
+                        push(Value{}); // push sol
+                    }
+                    break;
+                }
+                case OpCode::ARRAY_CLEAR:
+                {
+                    if (stack.empty())
+                    {
+                        std::cerr << "VM: ARRAY_CLEAR stack underflow" << std::endl;
+                        push(Value{}); // push sol
+                        break;
+                    }
+                    Value arr_val = pop();
+                    if (std::holds_alternative<Array>(arr_val))
+                    {
+                        auto arr = std::get<Array>(arr_val);
+                        arr->clear();
+                        push(arr); // push lại array
+                    }
+                    else
+                    {
+                        std::cerr << "VM: ARRAY_CLEAR target is not array" << std::endl;
+                        push(Value{}); // push sol
+                    }
+                    break;
+                }
+                case OpCode::ARRAY_CLONE:
+                {
+                    if (stack.empty())
+                    {
+                        std::cerr << "VM: ARRAY_CLONE stack underflow" << std::endl;
+                        push(Value{}); // push sol
+                        break;
+                    }
+                    Value arr_val = pop();
+                    if (std::holds_alternative<Array>(arr_val))
+                    {
+                        auto arr = std::get<Array>(arr_val);
+                        auto arr_clone = std::make_shared<std::vector<Value>>(*arr);
+                        push(arr_clone);
+                    }
+                    else
+                    {
+                        std::cerr << "VM: ARRAY_CLONE target is not array" << std::endl;
+                        push(Value{}); // push sol
+                    }
+                    break;
+                }
+                case OpCode::ARRAY_POP:
+                {
+                    if (stack.empty())
+                    {
+                        std::cerr << "VM: ARRAY_POP stack underflow" << std::endl;
+                        push(Value{}); // push sol
+                        break;
+                    }
+                    Value maybe_idx_or_arr = pop();
+                    // Nếu trên stack tiếp theo là array thì đây là dạng a.pop(index)
+                    if (!stack.empty() && std::holds_alternative<Array>(stack.back()))
+                    {
+                        auto arr = std::get<Array>(pop());
+                        // Xác định index
+                        int64_t idx = -1;
+                        if (std::holds_alternative<int64_t>(maybe_idx_or_arr))
+                            idx = std::get<int64_t>(maybe_idx_or_arr);
+                        else if (std::holds_alternative<double>(maybe_idx_or_arr))
+                            idx = static_cast<int64_t>(std::get<double>(maybe_idx_or_arr));
+                        else
+                        {
+                            push(Value{}); // sol nếu index không hợp lệ
+                            break;
+                        }
+                        if (idx < 0 || static_cast<size_t>(idx) >= arr->size())
+                        {
+                            push(Value{}); // sol nếu index out of range
+                        }
+                        else
+                        {
+                            Value popped = (*arr)[idx];
+                            arr->erase(arr->begin() + idx);
+                            push(popped);
+                        }
+                    }
+                    else if (std::holds_alternative<Array>(maybe_idx_or_arr))
+                    {
+                        // Dạng a.pop() không có index
+                        auto arr = std::get<Array>(maybe_idx_or_arr);
+                        if (!arr->empty())
+                        {
+                            Value popped = arr->back();
+                            arr->pop_back();
+                            push(popped);
+                        }
+                        else
+                        {
+                            push(Value{}); // sol nếu mảng rỗng
+                        }
+                    }
+                    else
+                    {
+                        std::cerr << "VM: ARRAY_POP target is not array" << std::endl;
+                        push(Value{}); // push sol
+                    }
+                    break;
+                }
+                case OpCode::MAP_GET:
+                {
+                    if (stack.size() < 2)
+                    {
+                        std::cerr << "VM: MAP_GET stack underflow" << std::endl;
+                        push(Value{}); // push sol
+                        break;
+                    }
+                    Value key = pop();
+                    Value map = pop();
+                    if (std::holds_alternative<Map>(map))
+                    {
+                        const auto &m = std::get<Map>(map);
+                        std::string key_str;
+                        if (std::holds_alternative<std::string>(key))
+                            key_str = std::get<std::string>(key);
+                        else if (std::holds_alternative<int64_t>(key))
+                            key_str = std::to_string(std::get<int64_t>(key));
+                        else if (std::holds_alternative<double>(key))
+                            key_str = std::to_string(std::get<double>(key));
+                        else if (std::holds_alternative<bool>(key))
+                            key_str = std::get<bool>(key) ? "true" : "false";
+                        else
+                            key_str = "";
+                        auto it = m->find(key_str);
+                        if (it != m->end())
+                            push(it->second);
+                        else
+                            push(Value{}); // sol
+                    }
+                    else
+                    {
+                        push(Value{}); // sol
+                    }
+                    break;
+                }
+                case OpCode::MAP_SET:
+                {
+                    if (stack.size() < 3)
+                    {
+                        std::cerr << "VM: MAP_SET stack underflow" << std::endl;
+                        push(Value{}); // push sol
+                        break;
+                    }
+                    Value value = pop();
+                    Value key = pop();
+                    Value map = pop();
+                    if (std::holds_alternative<Map>(map))
+                    {
+                        auto m = std::get<Map>(map);
+                        std::string key_str;
+                        if (std::holds_alternative<std::string>(key))
+                            key_str = std::get<std::string>(key);
+                        else if (std::holds_alternative<int64_t>(key))
+                            key_str = std::to_string(std::get<int64_t>(key));
+                        else if (std::holds_alternative<double>(key))
+                            key_str = std::to_string(std::get<double>(key));
+                        else if (std::holds_alternative<bool>(key))
+                            key_str = std::get<bool>(key) ? "true" : "false";
+                        else
+                            key_str = "";
+                        (*m)[key_str] = value;
+                        push(map); // push lại map
+                    }
+                    else
+                    {
+                        std::cerr << "VM: MAP_SET target is not map" << std::endl;
+                        push(Value{}); // push sol
+                    }
+                    break;
+                }
+                case OpCode::MAP_DELETE:
+                {
+                    if (stack.size() < 2)
+                    {
+                        std::cerr << "VM: MAP_DELETE stack underflow" << std::endl;
+                        push(Value{});
+                        break;
+                    }
+                    Value key_val = pop();
+                    Value map_val = pop();
+                    if (std::holds_alternative<Map>(map_val))
+                    {
+                        auto map = std::get<Map>(map_val);
+                        std::string key;
+                        if (std::holds_alternative<std::string>(key_val))
+                            key = std::get<std::string>(key_val);
+                        else if (std::holds_alternative<int64_t>(key_val))
+                            key = std::to_string(std::get<int64_t>(key_val));
+                        else if (std::holds_alternative<double>(key_val))
+                            key = std::to_string(std::get<double>(key_val));
+                        else if (std::holds_alternative<bool>(key_val))
+                            key = std::get<bool>(key_val) ? "true" : "false";
+                        else
+                            key = "";
+                        map->erase(key);
+                        push(map);
+                    }
+                    else
+                    {
+                        std::cerr << "VM: MAP_DELETE target is not map" << std::endl;
+                        push(Value{});
+                    }
+                    break;
+                }
+                case OpCode::MAP_CLEAR:
+                {
+                    if (stack.empty())
+                    {
+                        std::cerr << "VM: MAP_CLEAR stack underflow" << std::endl;
+                        push(Value{});
+                        break;
+                    }
+                    Value map_val = pop();
+                    if (std::holds_alternative<Map>(map_val))
+                    {
+                        auto map = std::get<Map>(map_val);
+                        map->clear();
+                        push(map);
+                    }
+                    else
+                    {
+                        std::cerr << "VM: MAP_CLEAR target is not map" << std::endl;
+                        push(Value{});
+                    }
+                    break;
+                }
+                case OpCode::MAP_KEYS:
+                {
+                    if (stack.empty())
+                    {
+                        std::cerr << "VM: MAP_KEYS stack underflow" << std::endl;
+                        push(Value{});
+                        break;
+                    }
+                    Value map_val = pop();
+                    if (std::holds_alternative<Map>(map_val))
+                    {
+                        auto map = std::get<Map>(map_val);
+                        Array arr = std::make_shared<std::vector<Value>>();
+                        for (const auto &kv : *map)
+                        {
+                            arr->push_back(kv.first);
+                        }
+                        push(arr);
+                    }
+                    else
+                    {
+                        std::cerr << "VM: MAP_KEYS target is not map" << std::endl;
+                        push(Value{});
+                    }
+                    break;
+                }
+                case OpCode::MAP_VALUES:
+                {
+                    if (stack.empty())
+                    {
+                        std::cerr << "VM: MAP_VALUES stack underflow" << std::endl;
+                        push(Value{});
+                        break;
+                    }
+                    Value map_val = pop();
+                    if (std::holds_alternative<Map>(map_val))
+                    {
+                        auto map = std::get<Map>(map_val);
+                        Array arr = std::make_shared<std::vector<Value>>();
+                        for (const auto &kv : *map)
+                        {
+                            arr->push_back(kv.second);
+                        }
+                        push(arr);
+                    }
+                    else
+                    {
+                        std::cerr << "VM: MAP_VALUES target is not map" << std::endl;
+                        push(Value{});
                     }
                     break;
                 }

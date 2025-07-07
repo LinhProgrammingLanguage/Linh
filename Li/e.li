@@ -1,4 +1,4 @@
-vas ngayTrongTuan = 2;
+vas ngayTrongTuan = int(input("Nhập số ngày trong tuần (1-7): "))
 vas tenNgay : str;
 
 switch (ngayTrongTuan) {

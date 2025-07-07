@@ -41,7 +41,11 @@ namespace Linh
         if (std::holds_alternative<int64_t>(val))
             return std::to_string(std::get<int64_t>(val));
         if (std::holds_alternative<uint64_t>(val))
-            return std::to_string(std::get<uint64_t>(val));
+        {
+            std::ostringstream oss;
+            oss << std::get<uint64_t>(val);
+            return oss.str();
+        }
         if (std::holds_alternative<double>(val))
         {
             std::ostringstream oss;
@@ -79,7 +83,7 @@ namespace Linh
             oss << "}";
             return oss.str();
         }
-        return "";
+        return "<unknown>";
     }
 
     int64_t to_int(const Value &val)
@@ -166,5 +170,24 @@ namespace Linh
         if (std::holds_alternative<std::string>(val))
             return !std::get<std::string>(val).empty();
         return false;
+    }
+
+    int64_t len(const Value &val)
+    {
+        if (std::holds_alternative<Array>(val))
+        {
+            const auto &arr = std::get<Array>(val);
+            return arr ? static_cast<int64_t>(arr->size()) : 0;
+        }
+        if (std::holds_alternative<Map>(val))
+        {
+            const auto &map = std::get<Map>(val);
+            return map ? static_cast<int64_t>(map->size()) : 0;
+        }
+        if (std::holds_alternative<std::string>(val))
+        {
+            return static_cast<int64_t>(std::get<std::string>(val).size());
+        }
+        return 0;
     }
 }

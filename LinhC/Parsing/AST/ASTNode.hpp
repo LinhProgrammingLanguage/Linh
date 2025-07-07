@@ -188,6 +188,8 @@ namespace Linh
         struct MapLiteralExpr;         // MỚI
         struct SubscriptExpr;          // MỚI
         struct InterpolatedStringExpr; // MỚI
+        struct MemberExpr;             // MỚI
+        struct MethodCallExpr;         // MỚI
 
         class ExprVisitor
         {
@@ -209,6 +211,8 @@ namespace Linh
             virtual std::any visitMapLiteralExpr(MapLiteralExpr *expr) = 0;                 // MỚI
             virtual std::any visitSubscriptExpr(SubscriptExpr *expr) = 0;                   // MỚI
             virtual std::any visitInterpolatedStringExpr(InterpolatedStringExpr *expr) = 0; // MỚI
+            virtual std::any visitMemberExpr(MemberExpr *expr) = 0;                         // MỚI
+            virtual std::any visitMethodCallExpr(MethodCallExpr *expr) = 0;                 // MỚI
         };
         struct Expr
         {
@@ -308,6 +312,35 @@ namespace Linh
             std::any accept(ExprVisitor *visitor) override { return visitor->visitInterpolatedStringExpr(this); }
             int getLine() const { return first_token.line; }
             int getCol() const { return first_token.column_start; }
+        };
+
+        struct MemberExpr : Expr
+        {
+            ExprPtr object;
+            std::string property;
+            Token dot_token;
+            Token property_token;
+            MemberExpr(ExprPtr obj, Token dot, Token prop_tok)
+                : object(std::move(obj)), property(prop_tok.lexeme), dot_token(std::move(dot)), property_token(std::move(prop_tok)) {}
+            std::any accept(ExprVisitor *visitor) override { /* chưa cần implement */ return {}; }
+            int getLine() const { return dot_token.line; }
+            int getCol() const { return dot_token.column_start; }
+        };
+
+        struct MethodCallExpr : Expr
+        {
+            ExprPtr object;
+            std::string method_name;
+            Token dot_token;
+            Token method_token;
+            std::vector<ExprPtr> arguments;
+            Token lparen_token;
+            Token rparen_token;
+            MethodCallExpr(ExprPtr obj, Token dot, Token method_tok, Token lparen, std::vector<ExprPtr> args, Token rparen)
+                : object(std::move(obj)), method_name(method_tok.lexeme), dot_token(std::move(dot)), method_token(std::move(method_tok)), lparen_token(std::move(lparen)), arguments(std::move(args)), rparen_token(std::move(rparen)) {}
+            std::any accept(ExprVisitor *visitor) override { return visitor->visitMethodCallExpr(this); }
+            int getLine() const { return dot_token.line; }
+            int getCol() const { return dot_token.column_start; }
         };
 
         // --- Statement nodes ---

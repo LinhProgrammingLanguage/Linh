@@ -47,6 +47,11 @@ namespace Linh
         void SemanticAnalyzer::begin_scope()
         {
             var_scopes.push_back({});
+            // Đăng ký built-in function printf (1 tham số)
+            if (global_functions.count("printf") == 0)
+            {
+                declare_function("printf", 1);
+            }
         }
         void SemanticAnalyzer::end_scope()
         {
@@ -76,8 +81,16 @@ namespace Linh
             global_functions[name] = true;
             function_param_counts[name] = param_count;
         }
+
+        // Danh sách các hàm built-in hợp lệ
+        static const std::unordered_set<std::string> builtin_functions = {
+            "print", "input", "str", "int", "float", "bool", "len", "id", "type", "uint", "pow", "printf"};
+
         bool SemanticAnalyzer::is_function_declared(const std::string &name)
         {
+            // Nếu là hàm built-in thì luôn hợp lệ
+            if (builtin_functions.count(name))
+                return true;
             return global_functions.count(name) > 0;
         }
 
@@ -736,6 +749,20 @@ namespace Linh
             // Nếu callee là IdentifierExpr thì kiểm tra tên hàm
             if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->callee.get()))
             {
+                // --- BẮT LỖI printf('...') ---
+                if (id->name.lexeme == "printf" && !expr->arguments.empty())
+                {
+                    auto *arg0 = expr->arguments[0].get();
+                    if (auto lit = dynamic_cast<AST::LiteralExpr *>(arg0))
+                    {
+                        // Kiểm tra token.lexeme bắt đầu và kết thúc bằng dấu nháy đơn
+                        const std::string &tok_lex = lit->token.lexeme;
+                        if (tok_lex.size() >= 2 && tok_lex.front() == '\'' && tok_lex.back() == '\'')
+                        {
+                            errors.push_back({ErrorStage::Semantic, "SemanticError", "printf() argument must use double quotes (\\\"...\\\") not single quotes (\\'...\\').", lit->getLine(), lit->getCol()});
+                        }
+                    }
+                }
                 // Allow built-in conversion functions without declaration
                 static const std::unordered_set<std::string> builtin_funcs = {
                     "input", "type", "str", "int", "float", "bool", "uint", "id"}; // Thêm "id"
@@ -824,6 +851,23 @@ namespace Linh
                         e->accept(this);
                 }
             }
+            return {};
+        }
+        std::any SemanticAnalyzer::visitMemberExpr(AST::MemberExpr *expr)
+        {
+            // Đơn giản: kiểm tra object (bên trái dấu chấm)
+            if (expr->object)
+                expr->object->accept(this);
+            // Không kiểm tra property ở đây (có thể bổ sung kiểm tra tên hàm hợp lệ nếu muốn)
+            return {};
+        }
+        std::any SemanticAnalyzer::visitMethodCallExpr(AST::MethodCallExpr *expr)
+        {
+            if (expr->object)
+                expr->object->accept(this);
+            for (const auto &arg : expr->arguments)
+                if (arg)
+                    arg->accept(this);
             return {};
         }
 
