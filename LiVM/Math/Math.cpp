@@ -195,6 +195,43 @@ namespace Linh
             case OpCode::GT_GT:
                 vm.push(av >> bv);
                 break;
+            // --- So sánh ---
+            case OpCode::LT:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][uint64_t LT] a=" << av << ", b=" << bv << ", result=" << (av < bv) << std::endl;
+#endif
+                vm.push(av < bv);
+                break;
+            case OpCode::LTE:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][uint64_t LTE] a=" << av << ", b=" << bv << ", result=" << (av <= bv) << std::endl;
+#endif
+                vm.push(av <= bv);
+                break;
+            case OpCode::GT:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][uint64_t GT] a=" << av << ", b=" << bv << ", result=" << (av > bv) << std::endl;
+#endif
+                vm.push(av > bv);
+                break;
+            case OpCode::GTE:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][uint64_t GTE] a=" << av << ", b=" << bv << ", result=" << (av >= bv) << std::endl;
+#endif
+                vm.push(av >= bv);
+                break;
+            case OpCode::EQ:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][uint64_t EQ] a=" << av << ", b=" << bv << ", result=" << (av == bv) << std::endl;
+#endif
+                vm.push(av == bv);
+                break;
+            case OpCode::NEQ:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][uint64_t NEQ] a=" << av << ", b=" << bv << ", result=" << (av != bv) << std::endl;
+#endif
+                vm.push(av != bv);
+                break;
             default:
                 break;
             }
@@ -261,6 +298,43 @@ namespace Linh
             case OpCode::GT_GT:
                 vm.push(av >> bv);
                 break;
+            // --- So sánh ---
+            case OpCode::LT:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][int64_t LT] a=" << av << ", b=" << bv << ", result=" << (av < bv) << std::endl;
+#endif
+                vm.push(av < bv);
+                break;
+            case OpCode::LTE:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][int64_t LTE] a=" << av << ", b=" << bv << ", result=" << (av <= bv) << std::endl;
+#endif
+                vm.push(av <= bv);
+                break;
+            case OpCode::GT:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][int64_t GT] a=" << av << ", b=" << bv << ", result=" << (av > bv) << std::endl;
+#endif
+                vm.push(av > bv);
+                break;
+            case OpCode::GTE:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][int64_t GTE] a=" << av << ", b=" << bv << ", result=" << (av >= bv) << std::endl;
+#endif
+                vm.push(av >= bv);
+                break;
+            case OpCode::EQ:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][int64_t EQ] a=" << av << ", b=" << bv << ", result=" << (av == bv) << std::endl;
+#endif
+                vm.push(av == bv);
+                break;
+            case OpCode::NEQ:
+#ifdef _DEBUG
+                std::cerr << "[DEBUG][int64_t NEQ] a=" << av << ", b=" << bv << ", result=" << (av != bv) << std::endl;
+#endif
+                vm.push(av != bv);
+                break;
             default:
                 break;
             }
@@ -319,6 +393,25 @@ namespace Linh
                 {
                     vm.push(std::floor(av / bv));
                 }
+                break;
+            // --- So sánh ---
+            case OpCode::LT:
+                vm.push(av < bv);
+                break;
+            case OpCode::LTE:
+                vm.push(av <= bv);
+                break;
+            case OpCode::GT:
+                vm.push(av > bv);
+                break;
+            case OpCode::GTE:
+                vm.push(av >= bv);
+                break;
+            case OpCode::EQ:
+                vm.push(av == bv);
+                break;
+            case OpCode::NEQ:
+                vm.push(av != bv);
                 break;
             default:
                 break;
@@ -380,14 +473,79 @@ namespace Linh
                     vm.push(std::floor(av / bv));
                 }
                 break;
+            // --- So sánh ---
+            case OpCode::LT:
+                vm.push(av < bv);
+                break;
+            case OpCode::LTE:
+                vm.push(av <= bv);
+                break;
+            case OpCode::GT:
+                vm.push(av > bv);
+                break;
+            case OpCode::GTE:
+                vm.push(av >= bv);
+                break;
+            case OpCode::EQ:
+                vm.push(av == bv);
+                break;
+            case OpCode::NEQ:
+                vm.push(av != bv);
+                break;
             default:
+                break;
+            }
+        }
+        else if (std::holds_alternative<std::string>(a) && std::holds_alternative<std::string>(b))
+        {
+            const std::string &av = std::get<std::string>(a);
+            const std::string &bv = std::get<std::string>(b);
+            switch (instr.opcode)
+            {
+            case OpCode::EQ:
+                vm.push(av == bv);
+                break;
+            case OpCode::NEQ:
+                vm.push(av != bv);
+                break;
+            case OpCode::LT:
+                vm.push(av < bv);
+                break;
+            case OpCode::LTE:
+                vm.push(av <= bv);
+                break;
+            case OpCode::GT:
+                vm.push(av > bv);
+                break;
+            case OpCode::GTE:
+                vm.push(av >= bv);
+                break;
+            default:
+                vm.push(std::monostate{});
+                break;
+            }
+        }
+        else if (std::holds_alternative<bool>(a) && std::holds_alternative<bool>(b))
+        {
+            bool av = std::get<bool>(a);
+            bool bv = std::get<bool>(b);
+            switch (instr.opcode)
+            {
+            case OpCode::EQ:
+                vm.push(av == bv);
+                break;
+            case OpCode::NEQ:
+                vm.push(av != bv);
+                break;
+            default:
+                vm.push(std::monostate{});
                 break;
             }
         }
         else
         {
 #ifdef _DEBUG
-            std::cerr << "Invalid operand types for arithmetic" << std::endl;
+            std::cerr << "Invalid operand types for arithmetic or comparison" << std::endl;
 #endif
             vm.push(std::monostate{});
         }

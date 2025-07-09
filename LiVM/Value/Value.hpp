@@ -12,18 +12,19 @@ namespace Linh
     using Array = std::shared_ptr<std::vector<Value>>;
     using Map = std::shared_ptr<std::unordered_map<std::string, Value>>;
 
-    struct Value : public std::variant<
-                       std::monostate,
-                       int64_t,
-                       uint64_t,
-                       double,
-                       std::string,
-                       bool,
-                       Array,
-                       Map>
-    {
-        using variant::variant;
-        Value() : variant() {}
-        Value(const variant &v) : variant(v) {}
+    using VariantType = std::variant<
+        std::monostate,
+        bool,
+        int64_t,
+        uint64_t,
+        double,
+        std::string,
+        Array,
+        Map>;
+
+    struct Value : public VariantType {
+        using VariantType::VariantType;
+        Value() : VariantType() {}
+        Value(const VariantType &v) : VariantType(v) {}
     };
 }

@@ -6,6 +6,32 @@
 #include <sstream>       // Thêm dòng này cho std::ostringstream
 #include <iomanip>
 #include "type.hpp"
+#include <variant>
+
+#ifdef _DEBUG
+// Helper to print a Value for debug
+static void debug_print_value(const Linh::Value& v, std::ostream& os = std::cerr) {
+    os << "[" << Linh::type_of(v) << "] ";
+    os << Linh::to_str(v);
+}
+static void debug_print_stack(const std::vector<Linh::Value>& stack, std::ostream& os = std::cerr) {
+    os << "[STACK size=" << stack.size() << "] ";
+    for (const auto& v : stack) {
+        debug_print_value(v, os);
+        os << ", ";
+    }
+    os << std::endl;
+}
+static void debug_print_vars(const std::unordered_map<int, Linh::Value>& vars, std::ostream& os = std::cerr) {
+    os << "[VARS size=" << vars.size() << "] ";
+    for (const auto& kv : vars) {
+        os << "idx=" << kv.first << ": ";
+        debug_print_value(kv.second, os);
+        os << "; ";
+    }
+    os << std::endl;
+}
+#endif
 
 struct TryFrame
 {
@@ -282,6 +308,7 @@ namespace Linh
                     else
                     {
                         std::cerr << "VM: AND/OR only supports bool" << std::endl;
+                        push(false);
                     }
                     break;
                 }
@@ -292,8 +319,10 @@ namespace Linh
                         push(!std::get<bool>(a));
                     else if (std::holds_alternative<int64_t>(a))
                         push(~std::get<int64_t>(a)); // bitwise NOT
-                    else
+                    else {
                         std::cerr << "VM: NOT only supports bool or int" << std::endl;
+                        push(false);
+                    }
                     break;
                 }
                 case OpCode::EQ:
@@ -303,216 +332,88 @@ namespace Linh
                 case OpCode::LTE:
                 case OpCode::GTE:
                 {
-                    // Debug: In stack trước khi pop
-                    std::cerr << "[DEBUG] Stack before pop (size=" << stack.size() << "): ";
-                    for (const auto &v : stack)
-                    {
-                        if (std::holds_alternative<int64_t>(v))
-                            std::cerr << std::get<int64_t>(v) << " ";
-                        else if (std::holds_alternative<double>(v))
-                            std::cerr << std::get<double>(v) << " ";
-                        else if (std::holds_alternative<std::string>(v))
-                            std::cerr << "\"" << std::get<std::string>(v) << "\" ";
-                        else if (std::holds_alternative<bool>(v))
-                            std::cerr << (std::get<bool>(v) ? "true" : "false") << " ";
-                        else
-                            std::cerr << "(?) ";
-                    }
-                    std::cerr << std::endl;
+#ifdef _DEBUG
+                    std::cerr << "[DEBUG] Before comparison: ";
+                    debug_print_stack(stack);
+#endif
                     auto b = pop();
                     auto a = pop();
-                    // Debug: In giá trị a, b
-                    std::cerr << "[DEBUG] a=";
-                    if (std::holds_alternative<int64_t>(a))
-                        std::cerr << std::get<int64_t>(a);
-                    else if (std::holds_alternative<double>(a))
-                        std::cerr << std::get<double>(a);
-                    else if (std::holds_alternative<std::string>(a))
-                        std::cerr << "\"" << std::get<std::string>(a) << "\"";
-                    else if (std::holds_alternative<bool>(a))
-                        std::cerr << (std::get<bool>(a) ? "true" : "false");
-                    else
-                        std::cerr << "(?)";
-                    std::cerr << ", b=";
-                    if (std::holds_alternative<int64_t>(b))
-                        std::cerr << std::get<int64_t>(b);
-                    else if (std::holds_alternative<double>(b))
-                        std::cerr << std::get<double>(b);
-                    else if (std::holds_alternative<std::string>(b))
-                        std::cerr << "\"" << std::get<std::string>(b) << "\"";
-                    else if (std::holds_alternative<bool>(b))
-                        std::cerr << (std::get<bool>(b) ? "true" : "false");
-                    else
-                        std::cerr << "(?)";
-                    std::cerr << std::endl;
-
+#ifdef _DEBUG
+                    std::cerr << "[DEBUG] Compare a="; debug_print_value(a); std::cerr << ", b="; debug_print_value(b); std::cerr << std::endl;
+#endif
                     bool result = false;
-                    // So sánh chuỗi nếu một trong hai là string
-                    if (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b))
-                    {
-                        std::string sa, sb;
-                        if (std::holds_alternative<std::string>(a))
-                            sa = std::get<std::string>(a);
-                        else if (std::holds_alternative<int64_t>(a))
-                            sa = std::to_string(std::get<int64_t>(a));
-                        else if (std::holds_alternative<double>(a))
-                            sa = std::to_string(std::get<double>(a));
-                        else if (std::holds_alternative<bool>(a))
-                            sa = std::get<bool>(a) ? "true" : "false";
-                        if (std::holds_alternative<std::string>(b))
-                            sb = std::get<std::string>(b);
-                        else if (std::holds_alternative<int64_t>(b))
-                            sb = std::to_string(std::get<int64_t>(b));
-                        else if (std::holds_alternative<double>(b))
-                            sb = std::to_string(std::get<double>(b));
-                        else if (std::holds_alternative<bool>(b))
-                            sb = std::get<bool>(b) ? "true" : "false";
-                        push(sa + sb);
+                    // If either is string, compare as string
+                    if (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b)) {
+                        std::string sa = std::holds_alternative<std::string>(a) ? std::get<std::string>(a) : Linh::to_str(a);
+                        std::string sb = std::holds_alternative<std::string>(b) ? std::get<std::string>(b) : Linh::to_str(b);
+                        switch (instr.opcode) {
+                            case OpCode::EQ: result = (sa == sb); break;
+                            case OpCode::NEQ: result = (sa != sb); break;
+                            case OpCode::LT: result = (sa < sb); break;
+                            case OpCode::GT: result = (sa > sb); break;
+                            case OpCode::LTE: result = (sa <= sb); break;
+                            case OpCode::GTE: result = (sa >= sb); break;
+                            default: result = false; break;
+                        }
+                        push(result);
                         break;
                     }
-                    // --- KẾT THÚC HỖ TRỢ NỐI CHUỖI ---
-                    if (std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b))
-                    {
-                        int64_t av = std::get<int64_t>(a);
-                        int64_t bv = std::get<int64_t>(b);
-                        switch (instr.opcode)
-                        {
-                        case OpCode::ADD:
-                            push(av + bv);
-                            break;
-                        case OpCode::SUB:
-                            push(av - bv);
-                            break;
-                        case OpCode::MUL:
-                            push(av * bv);
-                            break;
-                        case OpCode::DIV:
-                        case OpCode::MOD:
-                            if ((instr.opcode == OpCode::DIV || instr.opcode == OpCode::MOD) && bv == 0)
-                            {
-                                std::string err_msg = "Division by zero (int)";
-                                if (!try_stack.empty())
-                                {
-                                    variables[2] = err_msg;
-                                    ip = try_stack.back().catch_ip;
-                                    continue;
-                                }
-                                else
-                                {
-                                    std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: " << err_msg << std::endl;
-                                    return;
-                                }
-                            }
-                            if (instr.opcode == OpCode::DIV)
-                                push(av / bv);
-                            else
-                                push(av % bv);
-                            break;
-                        case OpCode::HASH:
-                            if (bv == 0)
-                            {
-                                std::string err_msg = "Floor division by zero (int)";
-                                if (!try_stack.empty())
-                                {
-                                    variables[2] = err_msg;
-                                    ip = try_stack.back().catch_ip;
-                                    continue;
-                                }
-                                else
-                                {
-                                    std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: " << err_msg << std::endl;
-                                    return;
-                                }
-                            }
-                            // Python-like floor division for int
-                            if ((av < 0) != (bv < 0) && av % bv != 0)
-                                push((av / bv) - 1);
-                            else
-                                push(av / bv);
-                            break;
-                        case OpCode::AMP:
-                            push(av & bv);
-                            break;
-                        case OpCode::PIPE:
-                            push(av | bv);
-                            break;
-                        case OpCode::CARET:
-                            push(av ^ bv);
-                            break;
-                        case OpCode::LT_LT:
-                            push(av << bv);
-                            break;
-                        case OpCode::GT_GT:
-                            push(av >> bv);
-                            break;
-                        default:
-                            break;
+                    // If both are bool
+                    if (std::holds_alternative<bool>(a) && std::holds_alternative<bool>(b)) {
+                        bool av = std::get<bool>(a);
+                        bool bv = std::get<bool>(b);
+                        switch (instr.opcode) {
+                            case OpCode::EQ: result = (av == bv); break;
+                            case OpCode::NEQ: result = (av != bv); break;
+                            case OpCode::LT: result = (!av && bv); break;
+                            case OpCode::GT: result = (av && !bv); break;
+                            case OpCode::LTE: result = (!av || bv); break;
+                            case OpCode::GTE: result = (av || !bv); break;
+                            default: result = false; break;
                         }
+                        push(result);
+                        break;
                     }
-                    else if ((std::holds_alternative<int64_t>(a) || std::holds_alternative<double>(a)) &&
-                             (std::holds_alternative<int64_t>(b) || std::holds_alternative<double>(b)))
-                    {
-                        double av = std::holds_alternative<int64_t>(a) ? static_cast<double>(std::get<int64_t>(a)) : std::get<double>(a);
-                        double bv = std::holds_alternative<int64_t>(b) ? static_cast<double>(std::get<int64_t>(b)) : std::get<double>(b);
-                        switch (instr.opcode)
-                        {
-                        case OpCode::ADD:
-                            push(av + bv);
-                            break;
-                        case OpCode::SUB:
-                            push(av - bv);
-                            break;
-                        case OpCode::MUL:
-                            push(av * bv);
-                            break;
-                        case OpCode::DIV:
-                            if (bv == 0.0)
-                            {
-                                std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Division by zero (float)" << std::endl;
-                                return;
-                            }
-                            else
-                            {
-                                push(av / bv);
-                            }
-                            break;
-                        case OpCode::MOD:
-                            if (bv == 0.0)
-                            {
-                                std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Modulo by zero (float)" << std::endl;
-                                return;
-                            }
-                            else
-                            {
-                                push(std::fmod(av, bv));
-                            }
-                            break;
-                        case OpCode::HASH:
-                            if (bv == 0.0)
-                            {
-                                std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Floor division by zero (float)" << std::endl;
-                                return;
-                            }
-                            else
-                            {
-                                push(std::floor(av / bv));
-                            }
-                            break;
-                        default:
-                            break;
+                    // If both are numbers (int/double/uint)
+                    if ((std::holds_alternative<int64_t>(a) || std::holds_alternative<double>(a) || std::holds_alternative<uint64_t>(a)) &&
+                        (std::holds_alternative<int64_t>(b) || std::holds_alternative<double>(b) || std::holds_alternative<uint64_t>(b))) {
+                        double av = std::holds_alternative<int64_t>(a) ? static_cast<double>(std::get<int64_t>(a)) :
+                                    (std::holds_alternative<uint64_t>(a) ? static_cast<double>(std::get<uint64_t>(a)) : std::get<double>(a));
+                        double bv = std::holds_alternative<int64_t>(b) ? static_cast<double>(std::get<int64_t>(b)) :
+                                    (std::holds_alternative<uint64_t>(b) ? static_cast<double>(std::get<uint64_t>(b)) : std::get<double>(b));
+                        switch (instr.opcode) {
+                            case OpCode::EQ: result = (av == bv); break;
+                            case OpCode::NEQ: result = (av != bv); break;
+                            case OpCode::LT: result = (av < bv); break;
+                            case OpCode::GT: result = (av > bv); break;
+                            case OpCode::LTE: result = (av <= bv); break;
+                            case OpCode::GTE: result = (av >= bv); break;
+                            default: result = false; break;
                         }
+                        push(result);
+                        break;
                     }
-                    else
-                    {
-                        std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Invalid operand types for arithmetic" << std::endl;
-                        return; // Dừng thực thi VM nếu lỗi kiểu
+                    // Fallback: compare as string
+                    std::string sa = Linh::to_str(a);
+                    std::string sb = Linh::to_str(b);
+                    switch (instr.opcode) {
+                        case OpCode::EQ: result = (sa == sb); break;
+                        case OpCode::NEQ: result = (sa != sb); break;
+                        case OpCode::LT: result = (sa < sb); break;
+                        case OpCode::GT: result = (sa > sb); break;
+                        case OpCode::LTE: result = (sa <= sb); break;
+                        case OpCode::GTE: result = (sa >= sb); break;
+                        default: result = false; break;
                     }
+                    push(result);
                     break;
                 }
                 case OpCode::LOAD_VAR:
                 {
                     int idx = std::get<int64_t>(instr.operand);
+#ifdef _DEBUG
                     std::cerr << "[DEBUG] LOAD_VAR idx=" << idx << ", variables.size()=" << variables.size() << std::endl;
+#endif
                     if (variables.count(idx))
                         push(variables[idx]);
                     else
@@ -967,6 +868,7 @@ namespace Linh
                             else
                             {
                                 std::cerr << "VM: AND/OR only supports bool" << std::endl;
+                                push(false);
                             }
                             break;
                         }
@@ -977,8 +879,10 @@ namespace Linh
                                 push(!std::get<bool>(a));
                             else if (std::holds_alternative<int64_t>(a))
                                 push(~std::get<int64_t>(a)); // bitwise NOT
-                            else
+                            else {
                                 std::cerr << "VM: NOT only supports bool or int" << std::endl;
+                                push(false);
+                            }
                             break;
                         }
                         case OpCode::EQ:
@@ -1075,6 +979,7 @@ namespace Linh
                                     result = (sa >= sb);
                                     break;
                                 default:
+                                    result = false;
                                     break;
                                 }
                                 push(result);
@@ -1106,6 +1011,7 @@ namespace Linh
                                     result = (av || !bv);
                                     break;
                                 default:
+                                    result = false;
                                     break;
                                 }
                                 push(result);
@@ -1138,6 +1044,7 @@ namespace Linh
                                     result = (av >= bv);
                                     break;
                                 default:
+                                    result = false;
                                     break;
                                 }
                                 push(result);
@@ -1188,6 +1095,7 @@ namespace Linh
                                 result = (sa >= sb);
                                 break;
                             default:
+                                result = false;
                                 break;
                             }
                             push(result);

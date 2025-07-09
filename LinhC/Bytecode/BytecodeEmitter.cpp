@@ -209,8 +209,7 @@ namespace Linh
             expr->value->accept(this);
         int idx = get_var_index(expr->name.lexeme);
         emit_instr(OpCode::STORE_VAR, idx, expr->getLine(), expr->getCol());
-        // Optionally, load the value back (for chaining)
-        emit_instr(OpCode::LOAD_VAR, idx, expr->getLine(), expr->getCol());
+        // Không emit LOAD_VAR ở đây (tránh dư stack cho for-loop)
         return {};
     }
 
@@ -249,7 +248,7 @@ namespace Linh
         if (stmt->expression)
             stmt->expression->accept(this);
 
-        // --- Sửa tại đây: Không sinh POP nếu là print(...) ---
+        // --- Sửa tại đây: Không sinh POP nếu là print(...) hoặc là increment trong for-loop ---
         auto call = dynamic_cast<AST::CallExpr *>(stmt->expression.get());
         if (call)
         {
@@ -259,6 +258,12 @@ namespace Linh
                 // Không sinh POP cho print(...)
                 return;
             }
+        }
+        // Không sinh POP nếu expression là dạng a = a + 1 (increment trong for)
+        // Đơn giản: nếu là AssignmentExpr thì không POP
+        if (dynamic_cast<AST::AssignmentExpr *>(stmt->expression.get()))
+        {
+            return;
         }
         emit_instr(OpCode::POP, {}, stmt->getLine(), stmt->getCol());
     }
@@ -769,26 +774,30 @@ namespace Linh
     std::any BytecodeEmitter::visitMethodCallExpr(AST::MethodCallExpr *expr)
     {
         // Map methods: delete, clear, keys, values
-        if (expr->method_name == "delete" && expr->arguments.size() == 1) {
+        if (expr->method_name == "delete" && expr->arguments.size() == 1)
+        {
             if (expr->object)
                 expr->object->accept(this);
             expr->arguments[0]->accept(this);
             emit_instr(OpCode::MAP_DELETE, {}, expr->getLine(), expr->getCol());
             return {};
         }
-        if (expr->method_name == "clear" && expr->arguments.empty()) {
+        if (expr->method_name == "clear" && expr->arguments.empty())
+        {
             if (expr->object)
                 expr->object->accept(this);
             emit_instr(OpCode::MAP_CLEAR, {}, expr->getLine(), expr->getCol());
             return {};
         }
-        if (expr->method_name == "keys" && expr->arguments.empty()) {
+        if (expr->method_name == "keys" && expr->arguments.empty())
+        {
             if (expr->object)
                 expr->object->accept(this);
             emit_instr(OpCode::MAP_KEYS, {}, expr->getLine(), expr->getCol());
             return {};
         }
-        if (expr->method_name == "values" && expr->arguments.empty()) {
+        if (expr->method_name == "values" && expr->arguments.empty())
+        {
             if (expr->object)
                 expr->object->accept(this);
             emit_instr(OpCode::MAP_VALUES, {}, expr->getLine(), expr->getCol());
