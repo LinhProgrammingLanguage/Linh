@@ -88,7 +88,10 @@ namespace Linh
         // --- Thêm cho try-catch-finally ---
         TRY,
         END_TRY,
-        ID // <--- Thêm opcode này cho hàm id()
+        ID, // <--- Thêm opcode này cho hàm id()
+        
+        // --- LiPM Package Management ---
+        LOAD_PACKAGE_CONST // <--- Thêm opcode này cho package constants
     };
 
     using BytecodeValue = std::variant<

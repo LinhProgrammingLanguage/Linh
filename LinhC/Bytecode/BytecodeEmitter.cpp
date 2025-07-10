@@ -1,4 +1,6 @@
 #include "BytecodeEmitter.hpp"
+#include <unordered_set>
+#include <iostream>
 
 namespace Linh
 {
@@ -204,9 +206,15 @@ namespace Linh
 
     std::any BytecodeEmitter::visitAssignmentExpr(AST::AssignmentExpr *expr)
     {
+#ifdef _DEBUG
+        std::cerr << "[DEBUG] visitAssignmentExpr: name=" << expr->name.lexeme << std::endl;
+        std::cerr << "[DEBUG] Assignment value type: " << typeid(*expr->value.get()).name() << std::endl;
+#endif
         // Evaluate value and store to variable
         if (expr->value)
+        {
             expr->value->accept(this);
+        }
         int idx = get_var_index(expr->name.lexeme);
         emit_instr(OpCode::STORE_VAR, idx, expr->getLine(), expr->getCol());
         // Không emit LOAD_VAR ở đây (tránh dư stack cho for-loop)
@@ -764,10 +772,46 @@ namespace Linh
 
     std::any BytecodeEmitter::visitMemberExpr(AST::MemberExpr *expr)
     {
-        // Đơn giản: chỉ cần đánh giá object (bên trái dấu chấm)
+#ifdef _DEBUG
+        std::cerr << "[DEBUG] visitMemberExpr called!" << std::endl;
+        std::cerr << "[DEBUG] MemberExpr: object=";
+        if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->object.get())) {
+            std::cerr << id->name.lexeme;
+        } else {
+            std::cerr << "(not identifier)";
+        }
+        std::cerr << ", property=" << expr->property_token.lexeme << std::endl;
+        std::cerr << "[DEBUG] is_package_constant: " << (expr->is_package_constant ? "true" : "false") << std::endl;
+#endif
+        
+        // Kiểm tra xem có phải package constant không
+        if (expr->is_package_constant) {
+            std::string full_name = expr->package_name + "." + expr->constant_name;
+#ifdef _DEBUG
+            std::cerr << "[DEBUG] Emitting LOAD_PACKAGE_CONST: " << full_name << std::endl;
+#endif
+            emit_instr(OpCode::LOAD_PACKAGE_CONST, full_name, expr->getLine(), expr->getCol());
+            return {};
+        }
+        
+        // Fallback: Nếu object là IdentifierExpr và là package mặc định, sinh LOAD_PACKAGE_CONST
+        auto id = dynamic_cast<AST::IdentifierExpr *>(expr->object.get());
+        if (id) {
+            // Luôn xử lý math.* như package constant
+            if (id->name.lexeme == "math") {
+                // Sinh opcode LOAD_PACKAGE_CONST với operand "package.property"
+                std::string full_name = id->name.lexeme + "." + expr->property_token.lexeme;
+#ifdef _DEBUG
+                std::cerr << "[DEBUG] Emitting LOAD_PACKAGE_CONST (fallback): " << full_name << std::endl;
+#endif
+                emit_instr(OpCode::LOAD_PACKAGE_CONST, full_name, expr->getLine(), expr->getCol());
+                return {};
+            }
+        }
+        // Nếu không phải package, xử lý như cũ (truy cập thuộc tính của map/object)
         if (expr->object)
             expr->object->accept(this);
-        // Không sinh bytecode cho property ở đây (xử lý trong visitCallExpr)
+        // Không sinh bytecode cho property ở đây (xử lý trong visitCallExpr nếu là method)
         return {};
     }
 

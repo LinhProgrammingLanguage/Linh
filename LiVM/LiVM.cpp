@@ -7,6 +7,7 @@
 #include <iomanip>
 #include "type.hpp"
 #include <variant>
+#include "../LiPM/LiPM.hpp" // Thêm dòng này cho LiPM support
 
 #ifdef _DEBUG
 // Helper to print a Value for debug
@@ -164,6 +165,8 @@ namespace Linh
             return "END_TRY";
         case OpCode::ID:
             return "ID";
+        case OpCode::LOAD_PACKAGE_CONST:
+            return "LOAD_PACKAGE_CONST";
         case OpCode::PUSH_ARRAY:
             return "PUSH_ARRAY";
         case OpCode::PUSH_MAP:
@@ -645,6 +648,7 @@ namespace Linh
                         case OpCode::LT_LT: // << (bitwise shift left)
                         case OpCode::GT_GT: // >> (bitwise shift right)
                         {
+#ifdef _DEBUG
                             // Debug: In stack trước khi pop
                             std::cerr << "[DEBUG] Stack before pop (size=" << stack.size() << "): ";
                             for (const auto &v : stack)
@@ -661,8 +665,10 @@ namespace Linh
                                     std::cerr << "(?) ";
                             }
                             std::cerr << std::endl;
+#endif
                             auto b = pop();
                             auto a = pop();
+#ifdef _DEBUG
                             // Debug: In giá trị a, b
                             std::cerr << "[DEBUG] a=";
                             if (std::holds_alternative<int64_t>(a))
@@ -687,6 +693,7 @@ namespace Linh
                             else
                                 std::cerr << "(?)";
                             std::cerr << std::endl;
+#endif
                             // --- HỖ TRỢ NỐI CHUỖI ---
                             if (finstr.opcode == OpCode::ADD &&
                                 (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b)))
@@ -892,6 +899,7 @@ namespace Linh
                         case OpCode::LTE:
                         case OpCode::GTE:
                         {
+#ifdef _DEBUG
                             // Debug: In stack trước khi pop
                             std::cerr << "[DEBUG] Stack before pop (size=" << stack.size() << "): ";
                             for (const auto &v : stack)
@@ -908,8 +916,10 @@ namespace Linh
                                     std::cerr << "(?) ";
                             }
                             std::cerr << std::endl;
+#endif
                             auto b = pop();
                             auto a = pop();
+#ifdef _DEBUG
                             // Debug: In giá trị a, b
                             std::cerr << "[DEBUG] a=";
                             if (std::holds_alternative<int64_t>(a))
@@ -934,6 +944,7 @@ namespace Linh
                             else
                                 std::cerr << "(?)";
                             std::cerr << std::endl;
+#endif
 
                             bool result = false;
                             // So sánh chuỗi nếu một trong hai là string
@@ -1104,7 +1115,9 @@ namespace Linh
                         case OpCode::LOAD_VAR:
                         {
                             int idx = std::get<int64_t>(finstr.operand);
+#ifdef _DEBUG
                             std::cerr << "[DEBUG] LOAD_VAR idx=" << idx << ", variables.size()=" << variables.size() << std::endl;
+#endif
                             if (variables.count(idx))
                                 push(variables[idx]);
                             else
@@ -1219,14 +1232,18 @@ namespace Linh
                     break;
                 }
                 case OpCode::DUP:
+#ifdef _DEBUG
                     std::cerr << "[DEBUG] DUP stack size before: " << stack.size() << std::endl;
+#endif
                     if (stack.empty())
                     {
                         std::cerr << "VM stack underflow for DUP" << std::endl;
                         break;
                     }
                     stack.push_back(stack.back());
+#ifdef _DEBUG
                     std::cerr << "[DEBUG] DUP stack size after: " << stack.size() << std::endl;
+#endif
                     break;
                 case OpCode::PUSH_ARRAY:
                 {
@@ -1719,6 +1736,28 @@ namespace Linh
                     }
                     break;
                 }
+                case OpCode::LOAD_PACKAGE_CONST:
+                {
+                    // Operand is a string: "package.constant"
+                    std::string full_name;
+                    if (std::holds_alternative<std::string>(instr.operand))
+                        full_name = std::get<std::string>(instr.operand);
+                    else
+                        full_name = "";
+                    auto dot_pos = full_name.find('.');
+                    if (dot_pos != std::string::npos)
+                    {
+                        std::string package = full_name.substr(0, dot_pos);
+                        std::string constant = full_name.substr(dot_pos + 1);
+                        auto val = Linh::LiPM::get_constant(package, constant);
+                        push(val);
+                    }
+                    else
+                    {
+                        push(Value{}); // sol
+                    }
+                    break;
+                }
                 default:
                     ++ip;
                     break;
@@ -1726,7 +1765,9 @@ namespace Linh
             }
             catch (const std::exception &ex)
             {
+#ifdef _DEBUG
                 std::cerr << "[DEBUG][EXCEPTION] " << ex.what() << " at ip=" << ip << std::endl;
+#endif
                 if (!try_stack.empty())
                 {
                     variables[2] = std::string(ex.what());

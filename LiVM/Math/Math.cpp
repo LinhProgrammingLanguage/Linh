@@ -1,57 +1,35 @@
 #include "Math.hpp"
+#include "../type.hpp"
 #include <cmath>
 #include <iostream>
 #include <variant>
 #include <string>
 
+#ifdef _DEBUG
+// Helper to print a Value for debug
+static void debug_print_value(const Linh::Value& v, std::ostream& os = std::cerr) {
+    os << "[" << Linh::type_of(v) << "] ";
+    os << Linh::to_str(v);
+}
+#endif
+
 namespace Linh
 {
     void math_binary_op(LiVM &vm, const Instruction &instr)
     {
-#ifdef _DEBUG
-        // Debug: In stack trước khi pop
-        std::cerr << "[DEBUG] Stack before pop (size=" << vm.stack.size() << "): ";
-        for (const auto &v : vm.stack)
-        {
-            if (std::holds_alternative<int64_t>(v))
-                std::cerr << std::get<int64_t>(v) << " ";
-            else if (std::holds_alternative<double>(v))
-                std::cerr << std::get<double>(v) << " ";
-            else if (std::holds_alternative<std::string>(v))
-                std::cerr << "\"" << std::get<std::string>(v) << "\" ";
-            else if (std::holds_alternative<bool>(v))
-                std::cerr << (std::get<bool>(v) ? "true" : "false") << " ";
-            else
-                std::cerr << "(?) ";
+        if (vm.stack.size() < 2) {
+            std::cerr << "VM stack underflow for binary operation" << std::endl;
+            return;
         }
-        std::cerr << std::endl;
-#endif
-        auto b = vm.pop();
-        auto a = vm.pop();
+        auto b = vm.stack.back();
+        vm.stack.pop_back();
+        auto a = vm.stack.back();
+        vm.stack.pop_back();
 #ifdef _DEBUG
-        // Debug: In giá trị a, b
-        std::cerr << "[DEBUG] a=";
-        if (std::holds_alternative<int64_t>(a))
-            std::cerr << std::get<int64_t>(a);
-        else if (std::holds_alternative<double>(a))
-            std::cerr << std::get<double>(a);
-        else if (std::holds_alternative<std::string>(a))
-            std::cerr << "\"" << std::get<std::string>(a) << "\"";
-        else if (std::holds_alternative<bool>(a))
-            std::cerr << (std::get<bool>(a) ? "true" : "false");
-        else
-            std::cerr << "(?)";
-        std::cerr << ", b=";
-        if (std::holds_alternative<int64_t>(b))
-            std::cerr << std::get<int64_t>(b);
-        else if (std::holds_alternative<double>(b))
-            std::cerr << std::get<double>(b);
-        else if (std::holds_alternative<std::string>(b))
-            std::cerr << "\"" << std::get<std::string>(b) << "\"";
-        else if (std::holds_alternative<bool>(b))
-            std::cerr << (std::get<bool>(b) ? "true" : "false");
-        else
-            std::cerr << "(?)";
+        std::cerr << "[DEBUG] Stack before pop (size=" << vm.stack.size() << "): ";
+        debug_print_value(a);
+        std::cerr << ", ";
+        debug_print_value(b);
         std::cerr << std::endl;
 #endif
         // --- CHẶN CỘNG SAI KIỂU DỮ LIỆU ---

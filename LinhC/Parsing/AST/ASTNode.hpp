@@ -320,9 +320,14 @@ namespace Linh
             std::string property;
             Token dot_token;
             Token property_token;
+            // Package constant fields
+            bool is_package_constant = false;
+            std::string package_name;
+            std::string constant_name;
+            
             MemberExpr(ExprPtr obj, Token dot, Token prop_tok)
                 : object(std::move(obj)), property(prop_tok.lexeme), dot_token(std::move(dot)), property_token(std::move(prop_tok)) {}
-            std::any accept(ExprVisitor *visitor) override { /* chưa cần implement */ return {}; }
+            std::any accept(ExprVisitor *visitor) override { return visitor->visitMemberExpr(this); }
             int getLine() const { return dot_token.line; }
             int getCol() const { return dot_token.column_start; }
         };

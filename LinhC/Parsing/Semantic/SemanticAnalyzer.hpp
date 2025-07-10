@@ -1,11 +1,13 @@
 #pragma once
 #include "../AST/ASTNode.hpp"
 #include "../../Error.hpp"
+#include "../../../LiPM/LiPM.hpp"
 #include <vector>
 #include <string>
 #include <iostream>
 #include <unordered_map>
 #include <stack>
+#include <unordered_set>
 
 namespace Linh
 {
@@ -74,6 +76,9 @@ namespace Linh
 
             // --- Bổ sung quản lý str_limit cho từng biến kiểu str<index> ---
             std::unordered_map<std::string, int> var_str_limit; // tên biến -> str_limit
+
+            // --- LiPM package management ---
+            std::unordered_set<std::string> imported_packages; // Track imported LiPM packages
 
             void begin_scope();
             void end_scope();

@@ -56,6 +56,14 @@ target_include_directories(LiVMLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+# --- LiPM Package Manager ---
+add_library(LiPMLib STATIC
+    LiPM/LiPM.cpp
+)
+target_include_directories(LiPMLib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 # --- Định nghĩa file thực thi chính ---
 add_executable(LinhApp
     Main.cpp
@@ -74,6 +82,7 @@ target_link_libraries(LinhApp PRIVATE
     LinhParserLib
     LinhSemanticLib
     LiVMLib
+    LiPMLib
 )
 
 if(WIN32)

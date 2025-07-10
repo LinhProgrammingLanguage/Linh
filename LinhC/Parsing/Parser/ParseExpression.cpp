@@ -118,12 +118,25 @@ namespace Linh
     AST::ExprPtr Parser::logical_and()
     {
         // equality ( ( '&&' | 'and' ) equality )*
-        AST::ExprPtr expr = bitwise_or();
+        AST::ExprPtr expr = equality();
         while (match({TokenType::AND_LOGIC, TokenType::AND_KW}))
         {
             Token op = previous();
-            AST::ExprPtr right = bitwise_or();
+            AST::ExprPtr right = equality();
             expr = std::make_unique<AST::LogicalExpr>(std::move(expr), op, std::move(right));
+        }
+        return expr;
+    }
+
+    AST::ExprPtr Parser::equality()
+    {
+        // comparison ( ( '==' | '!=' ) comparison )*
+        AST::ExprPtr expr = comparison();
+        while (match({TokenType::EQ_EQ, TokenType::NOT_EQ}))
+        {
+            Token op = previous();
+            AST::ExprPtr right = comparison();
+            expr = std::make_unique<AST::BinaryExpr>(std::move(expr), op, std::move(right));
         }
         return expr;
     }
@@ -284,10 +297,16 @@ namespace Linh
             else if (match({TokenType::DOT})) // Truy cập thành viên hoặc gọi method: expr.ident hoặc expr.method(...)
             {
                 Token dot_token = previous();
+#ifdef _DEBUG
+                std::cerr << "[DEBUG] Found DOT token, next token: " << peek().lexeme << " (type: " << static_cast<int>(peek().type) << ")" << std::endl;
+#endif
                 // Accept IDENTIFIER or DELETE_KW as property/method name
                 Token property_token;
                 if (check(TokenType::IDENTIFIER) || check(TokenType::DELETE_KW)) {
                     property_token = advance();
+#ifdef _DEBUG
+                    std::cerr << "[DEBUG] MemberExpr created with property: " << property_token.lexeme << std::endl;
+#endif
                 } else {
                     throw error(peek(), "Thiếu tên thuộc tính sau dấu '.'");
                 }

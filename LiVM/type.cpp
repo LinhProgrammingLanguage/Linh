@@ -3,6 +3,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <limits>
+#include <iomanip>
 
 namespace Linh
 {
@@ -49,7 +50,7 @@ namespace Linh
         if (std::holds_alternative<double>(val))
         {
             std::ostringstream oss;
-            oss << std::get<double>(val);
+            oss << std::fixed << std::setprecision(15) << std::get<double>(val);
             return oss.str();
         }
         if (std::holds_alternative<bool>(val))

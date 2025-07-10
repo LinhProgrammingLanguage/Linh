@@ -292,9 +292,16 @@ namespace Linh
         Token module_name(TokenType::END_OF_FILE, "", std::monostate{}, import_kw.line, import_kw.column_start);
         Token semicolon(TokenType::END_OF_FILE, "", std::monostate{}, import_kw.line, import_kw.column_start);
 
+#ifdef _DEBUG
+        std::cerr << "[DEBUG] Import statement - current token: " << peek().lexeme << " (type: " << static_cast<int>(peek().type) << ")" << std::endl;
+        std::cerr << "[DEBUG] Expected IDENTIFIER type: " << static_cast<int>(TokenType::IDENTIFIER) << std::endl;
+#endif
         // Nếu tiếp theo là IDENTIFIER, có thể là import name1, name2 from module; hoặc import module;
         if (check(TokenType::IDENTIFIER))
         {
+#ifdef _DEBUG
+            std::cerr << "[DEBUG] Found IDENTIFIER after import: " << peek().lexeme << std::endl;
+#endif
             Token first = advance();
             if (check(TokenType::COMMA))
             {
@@ -335,12 +342,34 @@ namespace Linh
                 module_name = Token(TokenType::IDENTIFIER, mod_name, std::monostate{}, mod_first.line, mod_first.column_start);
                 semicolon = consume(TokenType::SEMICOLON, "Missing ';' after import statement.");
             }
-            else if (check(TokenType::DOT) || check(TokenType::SEMICOLON))
+            else if (check(TokenType::DOT) || check(TokenType::SEMICOLON) || check(TokenType::END_OF_FILE)
+                || check(TokenType::PRINT_KW)
+                || check(TokenType::VAR_KW)
+                || check(TokenType::VAS_KW)
+                || check(TokenType::CONST_KW)
+                || check(TokenType::FUNC_KW)
+                || check(TokenType::IF_KW)
+                || check(TokenType::WHILE_KW)
+                || check(TokenType::FOR_KW)
+                || check(TokenType::SWITCH_KW)
+                || check(TokenType::RETURN_KW)
+                || check(TokenType::DO_KW)
+                || check(TokenType::TRY_KW)
+                || check(TokenType::THROW_KW)
+                || check(TokenType::DELETE_KW)
+                || check(TokenType::BREAK_KW)
+                || check(TokenType::SKIP_KW))
             {
                 // import module; hoặc import module.with.dots;
+#ifdef _DEBUG
+                std::cerr << "[DEBUG] Entering import module branch" << std::endl;
+#endif
                 std::string mod_name = first.lexeme;
                 int mod_line = first.line;
                 int mod_col = first.column_start;
+#ifdef _DEBUG
+                std::cerr << "[DEBUG] Processing import module: " << mod_name << std::endl;
+#endif
                 while (check(TokenType::DOT))
                 {
                     advance(); // consume DOT
@@ -348,7 +377,48 @@ namespace Linh
                     mod_name += "." + next_part.lexeme;
                 }
                 module_name = Token(TokenType::IDENTIFIER, mod_name, std::monostate{}, mod_line, mod_col);
-                semicolon = consume(TokenType::SEMICOLON, "Missing ';' after import statement.");
+#ifdef _DEBUG
+                std::cerr << "[DEBUG] Final module name: " << mod_name << std::endl;
+                std::cerr << "[DEBUG] Next token: " << peek().lexeme << " (type: " << static_cast<int>(peek().type) << ")" << std::endl;
+#endif
+                // Cho phép không có dấu chấm phẩy trong REPL hoặc khi là EOF hoặc khi tiếp theo là statement khác
+                if (check(TokenType::SEMICOLON))
+                {
+                    semicolon = consume(TokenType::SEMICOLON, "");
+#ifdef _DEBUG
+                    std::cerr << "[DEBUG] Found semicolon" << std::endl;
+#endif
+                }
+                else if (check(TokenType::END_OF_FILE)
+                    || check(TokenType::PRINT_KW)
+                    || check(TokenType::VAR_KW)
+                    || check(TokenType::VAS_KW)
+                    || check(TokenType::CONST_KW)
+                    || check(TokenType::FUNC_KW)
+                    || check(TokenType::IF_KW)
+                    || check(TokenType::WHILE_KW)
+                    || check(TokenType::FOR_KW)
+                    || check(TokenType::SWITCH_KW)
+                    || check(TokenType::RETURN_KW)
+                    || check(TokenType::DO_KW)
+                    || check(TokenType::TRY_KW)
+                    || check(TokenType::THROW_KW)
+                    || check(TokenType::DELETE_KW)
+                    || check(TokenType::BREAK_KW)
+                    || check(TokenType::SKIP_KW))
+                {
+                    // Không consume gì thêm, cho phép kết thúc import bằng EOF hoặc bắt đầu statement mới
+#ifdef _DEBUG
+                    std::cerr << "[DEBUG] Found EOF or next statement, no semicolon needed" << std::endl;
+#endif
+                }
+                else
+                {
+#ifdef _DEBUG
+                    std::cerr << "[DEBUG] Error: unexpected token after module name" << std::endl;
+#endif
+                    throw error(peek(), "Missing ';' after import statement.");
+                }
             }
             else
             {

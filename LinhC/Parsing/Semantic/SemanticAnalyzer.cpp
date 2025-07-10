@@ -69,6 +69,9 @@ namespace Linh
         }
         bool SemanticAnalyzer::is_var_declared(const std::string &name)
         {
+            // Nếu là package đã import, coi như đã khai báo
+            if (imported_packages.count(name) > 0)
+                return true;
             for (auto it = var_scopes.rbegin(); it != var_scopes.rend(); ++it)
             {
                 if (it->count(name))
@@ -503,7 +506,18 @@ namespace Linh
             // Đảm bảo chỉ xử lý import module dạng: import module_name;
             if (!stmt->module_name.lexeme.empty())
             {
-                std::string module_path = "Li/" + stmt->module_name.lexeme;
+                std::string module_name = stmt->module_name.lexeme;
+                
+                // Check if it's a LiPM package first
+                if (Linh::LiPM::package_exists(module_name))
+                {
+                    // This is a LiPM package, mark it as imported
+                    imported_packages.insert(module_name);
+                    return;
+                }
+                
+                // Fall back to file-based module import
+                std::string module_path = "Li/" + module_name;
                 if (module_path.find(".li") == std::string::npos)
                     module_path += ".li";
                 std::ifstream mod_file(module_path);
@@ -587,7 +601,23 @@ namespace Linh
             if (dot_pos != std::string::npos)
             {
                 std::string base = lex.substr(0, dot_pos);
-                if (is_var_declared(base))
+                std::string member = lex.substr(dot_pos + 1);
+                
+                // Check if this is a package constant (e.g., math.pi)
+                if (imported_packages.count(base))
+                {
+                    // This is a package constant, check if it exists
+                    if (Linh::LiPM::get_constant(base, member).index() != 0) // Not sol
+                    {
+                        return {}; // Package constant exists, allow it
+                    }
+                    else
+                    {
+                        errors.push_back({ErrorStage::Semantic, "SemanticError", "Package '" + base + "' does not have constant '" + member + "'.", expr->name.line, expr->name.column_start});
+                        return {};
+                    }
+                }
+                else if (is_var_declared(base))
                 {
                     // Cho phép error.message nếu error đã khai báo
                     return {};
@@ -855,10 +885,28 @@ namespace Linh
         }
         std::any SemanticAnalyzer::visitMemberExpr(AST::MemberExpr *expr)
         {
-            // Đơn giản: kiểm tra object (bên trái dấu chấm)
+            // Kiểm tra xem object có phải là package đã import không
+            if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->object.get()))
+            {
+                std::string package_name = id->name.lexeme;
+                std::string property_name = expr->property_token.lexeme;
+                
+                // Kiểm tra xem package có được import không
+                if (imported_packages.count(package_name) > 0)
+                {
+#ifdef _DEBUG
+                    std::cerr << "[DEBUG] Found imported package: " << package_name << "." << property_name << std::endl;
+#endif
+                    // Đánh dấu đây là package constant
+                    expr->is_package_constant = true;
+                    expr->package_name = package_name;
+                    expr->constant_name = property_name;
+                }
+            }
+            
+            // Vẫn gọi accept cho object để semantic analysis bình thường
             if (expr->object)
                 expr->object->accept(this);
-            // Không kiểm tra property ở đây (có thể bổ sung kiểm tra tên hàm hợp lệ nếu muốn)
             return {};
         }
         std::any SemanticAnalyzer::visitMethodCallExpr(AST::MethodCallExpr *expr)
