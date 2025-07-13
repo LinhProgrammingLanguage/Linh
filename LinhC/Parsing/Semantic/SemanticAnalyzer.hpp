@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <stack>
 #include <unordered_set>
+#include <memory>
+#include <future>
 
 namespace Linh
 {
@@ -20,6 +22,16 @@ namespace Linh
             std::vector<Linh::Error> errors;
 
             void analyze(const AST::StmtList &stmts, bool reset_state = true);
+
+            // Optimization methods
+            void enable_caching(bool enable = true) { caching_enabled = enable; }
+            void enable_early_exit(bool enable = true) { early_exit_enabled = enable; }
+            void enable_parallel_analysis(bool enable = true) { parallel_analysis_enabled = enable; }
+            
+            // Performance monitoring
+            size_t get_analysis_time_ms() const { return analysis_time_ms; }
+            size_t get_cache_hits() const { return cache_hits; }
+            size_t get_cache_misses() const { return cache_misses; }
 
             // StmtVisitor overrides
             void visitExpressionStmt(AST::ExpressionStmt *stmt) override;
@@ -62,6 +74,36 @@ namespace Linh
             const std::vector<Linh::Error> &get_errors() const;
 
         private:
+            // Optimization flags
+            bool caching_enabled = true;
+            bool early_exit_enabled = true;
+            bool parallel_analysis_enabled = false;
+            
+            // Performance tracking
+            size_t analysis_time_ms = 0;
+            size_t cache_hits = 0;
+            size_t cache_misses = 0;
+            
+            // Caching for type checking
+            std::unordered_map<std::string, std::string> type_cache; // expression_hash -> type
+            std::unordered_map<std::string, bool> error_cache; // error_key -> has_error
+            
+            // Early exit tracking
+            bool should_early_exit = false;
+            
+            // Helper methods for optimization
+            std::string get_expression_hash(AST::Expr* expr);
+            std::string get_error_key(const AST::Stmt* stmt, const std::string& error_type);
+            std::string get_error_key(const AST::Expr* expr, const std::string& error_type);
+            bool check_cached_error(const AST::Stmt* stmt, const std::string& error_type);
+            bool check_cached_error(const AST::Expr* expr, const std::string& error_type);
+            void cache_error(const AST::Stmt* stmt, const std::string& error_type);
+            void cache_error(const AST::Expr* expr, const std::string& error_type);
+            
+            // Parallel analysis helpers
+            void analyze_statement_parallel(AST::Stmt* stmt);
+            std::vector<Linh::Error> merge_errors(const std::vector<std::vector<Linh::Error>>& error_lists);
+
             bool is_sol_type(const std::optional<AST::TypeNodePtr> &type);
             bool is_sol_expr(const AST::ExprPtr &expr);
 

@@ -566,30 +566,11 @@ namespace Linh
         parts.push_back(std::get<std::string>(first_str_token.literal));
         while (match({TokenType::INTERP_START}))
         {
-            // Sửa: Lấy token biểu thức nội suy (thường là IDENTIFIER)
-            if (check(TokenType::IDENTIFIER))
-            {
-                Token id_token = advance();
-                std::string id_name;
-                if (std::holds_alternative<std::string>(id_token.literal))
-                {
-                    id_name = std::get<std::string>(id_token.literal);
-                }
-                else
-                {
-                    id_name = id_token.lexeme;
-                }
-                auto expr = std::make_unique<AST::IdentifierExpr>(Token(TokenType::IDENTIFIER, id_name, id_name, id_token.line, id_token.column_start));
-                // Sửa ở đây: consume INTERP_END thay vì RBRACE
-                consume(TokenType::INTERP_END, "Thiếu '}' sau biểu thức nội suy trong chuỗi.");
-                parts.push_back(std::move(expr));
-            }
-            else
-            {
-                AST::ExprPtr expr = expression();
-                consume(TokenType::INTERP_END, "Thiếu '}' sau biểu thức nội suy trong chuỗi.");
-                parts.push_back(std::move(expr));
-            }
+            // Luôn parse như một biểu thức đầy đủ, không chỉ IDENTIFIER
+            AST::ExprPtr expr = expression();
+            consume(TokenType::INTERP_END, "Thiếu '}' sau biểu thức nội suy trong chuỗi.");
+            parts.push_back(std::move(expr));
+            
             // Nếu tiếp tục có STR thì nối tiếp
             if (check(TokenType::STR))
             {

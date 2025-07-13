@@ -1,0 +1,22 @@
+// Test print multiple values with comma separator
+print("Hello", "World", 123, 45.67, true)
+
+// Test with variables
+var name = "Linh"
+var age = 25
+var height = 1.75
+print("Name:", name, "Age:", age, "Height:", height)
+
+// Test with different types
+var arr = [1, 2, 3]
+var mymap = {"a": 1, "b": 2}
+print("Array:", arr, "Map:", mymap)
+
+// Test empty print
+print()
+
+// Test single value (should still work)
+print("Single value")
+
+// Test with expressions
+print("Sum:", 10 + 20, "Product:", 5 * 6) 

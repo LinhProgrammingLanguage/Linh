@@ -245,7 +245,11 @@ namespace Linh
         }
         void ASTPrinter::visitPrintStmt(PrintStmt *stmt)
         {
-            build_stmt_structure("PrintStmt", {stmt->expression.get()}, {}, {}, {}, {{"kw", stmt->keyword.lexeme}});
+            std::vector<Expr*> exprs;
+            for (const auto& expr : stmt->expressions) {
+                exprs.push_back(expr.get());
+            }
+            build_stmt_structure("PrintStmt", exprs, {}, {}, {}, {{"kw", stmt->keyword.lexeme}});
         }
 
         void ASTPrinter::visitVarDeclStmt(VarDeclStmt *stmt)

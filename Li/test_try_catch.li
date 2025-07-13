@@ -1,0 +1,13 @@
+try {
+    var a = 10 / 0
+} catch (error) {
+    print("Caught error: " + error)
+}
+
+try {
+    var b = 5 / 0
+} catch (error) {
+    print("Another error: " + error)
+}
+
+print("Program completed successfully") 

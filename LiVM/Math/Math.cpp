@@ -90,7 +90,7 @@ namespace Linh
             else if (std::holds_alternative<int64_t>(a))
                 sa = std::to_string(std::get<int64_t>(a));
             else if (std::holds_alternative<double>(a))
-                sa = std::to_string(std::get<double>(a));
+                sa = Linh::to_str(a);
             else if (std::holds_alternative<uint64_t>(a))
                 sa = std::to_string(std::get<uint64_t>(a));
             if (std::holds_alternative<std::string>(b))
@@ -98,7 +98,7 @@ namespace Linh
             else if (std::holds_alternative<int64_t>(b))
                 sb = std::to_string(std::get<int64_t>(b));
             else if (std::holds_alternative<double>(b))
-                sb = std::to_string(std::get<double>(b));
+                sb = Linh::to_str(b);
             else if (std::holds_alternative<uint64_t>(b))
                 sb = std::to_string(std::get<uint64_t>(b));
             vm.push(sa + sb);
@@ -128,8 +128,7 @@ namespace Linh
 #ifdef _DEBUG
                     std::cerr << err_msg << std::endl;
 #endif
-                    vm.push(std::monostate{});
-                    break;
+                    throw std::runtime_error(err_msg);
                 }
                 vm.push(av / bv);
                 break;
@@ -140,8 +139,7 @@ namespace Linh
 #ifdef _DEBUG
                     std::cerr << err_msg << std::endl;
 #endif
-                    vm.push(std::monostate{});
-                    break;
+                    throw std::runtime_error(err_msg);
                 }
                 vm.push(av % bv);
                 break;
@@ -152,8 +150,7 @@ namespace Linh
 #ifdef _DEBUG
                     std::cerr << err_msg << std::endl;
 #endif
-                    vm.push(std::monostate{});
-                    break;
+                    throw std::runtime_error(err_msg);
                 }
                 // Floor division cho uint giống chia thường
                 vm.push(av / bv);
@@ -237,8 +234,7 @@ namespace Linh
 #ifdef _DEBUG
                     std::cerr << err_msg << std::endl;
 #endif
-                    vm.push(std::monostate{});
-                    break;
+                    throw std::runtime_error(err_msg);
                 }
                 if (instr.opcode == OpCode::DIV)
                     vm.push(av / bv);
@@ -252,8 +248,7 @@ namespace Linh
 #ifdef _DEBUG
                     std::cerr << err_msg << std::endl;
 #endif
-                    vm.push(std::monostate{});
-                    break;
+                    throw std::runtime_error(err_msg);
                 }
                 // Python-like floor division for int
                 if ((av < 0) != (bv < 0) && av % bv != 0)
@@ -336,10 +331,11 @@ namespace Linh
             case OpCode::DIV:
                 if (bv == 0.0)
                 {
+                    std::string err_msg = "Division by zero (float)";
 #ifdef _DEBUG
-                    std::cerr << "Division by zero (float)" << std::endl;
+                    std::cerr << err_msg << std::endl;
 #endif
-                    vm.push(std::monostate{});
+                    throw std::runtime_error(err_msg);
                 }
                 else
                 {
@@ -349,10 +345,11 @@ namespace Linh
             case OpCode::MOD:
                 if (bv == 0.0)
                 {
+                    std::string err_msg = "Modulo by zero (float)";
 #ifdef _DEBUG
-                    std::cerr << "Modulo by zero (float)" << std::endl;
+                    std::cerr << err_msg << std::endl;
 #endif
-                    vm.push(std::monostate{});
+                    throw std::runtime_error(err_msg);
                 }
                 else
                 {
@@ -362,10 +359,11 @@ namespace Linh
             case OpCode::HASH:
                 if (bv == 0.0)
                 {
+                    std::string err_msg = "Floor division by zero (float)";
 #ifdef _DEBUG
-                    std::cerr << "Floor division by zero (float)" << std::endl;
+                    std::cerr << err_msg << std::endl;
 #endif
-                    vm.push(std::monostate{});
+                    throw std::runtime_error(err_msg);
                 }
                 else
                 {
@@ -415,10 +413,11 @@ namespace Linh
             case OpCode::DIV:
                 if (bv == 0.0)
                 {
+                    std::string err_msg = "Division by zero (float/uint)";
 #ifdef _DEBUG
-                    std::cerr << "Division by zero (float/uint)" << std::endl;
+                    std::cerr << err_msg << std::endl;
 #endif
-                    vm.push(std::monostate{});
+                    throw std::runtime_error(err_msg);
                 }
                 else
                 {
@@ -428,10 +427,11 @@ namespace Linh
             case OpCode::MOD:
                 if (bv == 0.0)
                 {
+                    std::string err_msg = "Modulo by zero (float/uint)";
 #ifdef _DEBUG
-                    std::cerr << "Modulo by zero (float/uint)" << std::endl;
+                    std::cerr << err_msg << std::endl;
 #endif
-                    vm.push(std::monostate{});
+                    throw std::runtime_error(err_msg);
                 }
                 else
                 {
@@ -441,10 +441,11 @@ namespace Linh
             case OpCode::HASH:
                 if (bv == 0.0)
                 {
+                    std::string err_msg = "Floor division by zero (float/uint)";
 #ifdef _DEBUG
-                    std::cerr << "Floor division by zero (float/uint)" << std::endl;
+                    std::cerr << err_msg << std::endl;
 #endif
-                    vm.push(std::monostate{});
+                    throw std::runtime_error(err_msg);
                 }
                 else
                 {

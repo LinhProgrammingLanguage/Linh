@@ -289,6 +289,7 @@ namespace Linh
 
                 // Quét đến dấu đóng '}'
                 int brace_count = 1;
+                std::string expr_content;
                 while (!is_at_end() && brace_count > 0)
                 {
                     char ch = peek();
@@ -302,7 +303,7 @@ namespace Linh
                         if (brace_count == 0)
                             break;
                     }
-                    advance();
+                    expr_content += advance();
                 }
 
                 if (is_at_end())
@@ -311,10 +312,22 @@ namespace Linh
                     return;
                 }
 
-                std::string expr = m_source.substr(m_start_lexeme, m_current_pos - m_start_lexeme);
-                if (!expr.empty())
+                // Tokenize nội dung biểu thức nội suy
+                if (!expr_content.empty())
                 {
-                    create_and_add_token(TokenType::IDENTIFIER, expr, expr_start_line, expr_start_col);
+                    // Tạo một Lexer tạm thời để tokenize nội dung biểu thức
+                    Lexer expr_lexer(expr_content);
+                    auto expr_tokens = expr_lexer.scan_tokens();
+                    
+                    // Thêm các token vào danh sách chính (bỏ qua EOF token cuối)
+                    for (size_t i = 0; i < expr_tokens.size() - 1; ++i)
+                    {
+                        auto& token = expr_tokens[i];
+                        // Điều chỉnh vị trí token để phù hợp với vị trí trong chuỗi gốc
+                        token.line = expr_start_line;
+                        token.column_start = expr_start_col + token.column_start;
+                        m_tokens.push_back(token);
+                    }
                 }
 
                 // Đặt lại m_start_lexeme để INTERP_END có lexeme đúng

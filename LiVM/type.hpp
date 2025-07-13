@@ -12,6 +12,9 @@ namespace Linh
 
     std::string type_of(const Value &val);
 
+    // Hàm format số thực theo quy tắc của Linh
+    std::string format_float_linh(double value);
+
     // Hàm chuyển đổi kiểu dữ liệu
     std::string to_str(const Value &val);
     int64_t to_int(const Value &val);

@@ -12,6 +12,80 @@ namespace Linh
         vm.type();
     }
 
+    // Hàm riêng để format số thực theo quy tắc của Linh
+    std::string format_float_linh(double value)
+    {
+        // Bước 1: Chuyển thành string với độ chính xác cao
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(17) << value;
+        std::string str = oss.str();
+        
+        // Bước 2: Tìm vị trí dấu chấm thập phân
+        size_t dot_pos = str.find('.');
+        if (dot_pos == std::string::npos) {
+            return str; // Không có phần thập phân
+        }
+        
+        // Bước 3: Loại bỏ số 0 cuối từ phần thập phân, nhưng giữ lại ít nhất một số 0
+        size_t end_pos = str.length() - 1;
+        while (end_pos > dot_pos + 1 && str[end_pos] == '0') {
+            end_pos--;
+        }
+        
+        // Bước 4: Nếu chỉ còn một số 0 sau dấu chấm, giữ lại
+        if (end_pos == dot_pos + 1 && str[end_pos] == '0') {
+            return str.substr(0, end_pos + 1); // Giữ lại "x.0"
+        }
+        
+        // Bước 5: Giới hạn tối đa 15 chữ số có nghĩa (bao gồm cả phần nguyên)
+        std::string result = str.substr(0, end_pos + 1);
+        
+        // Đếm số chữ số có nghĩa
+        int significant_digits = 0;
+        bool found_non_zero = false;
+        
+        for (char c : result) {
+            if (c == '.') continue;
+            if (c != '0') found_non_zero = true;
+            if (found_non_zero) significant_digits++;
+        }
+        
+        // Nếu có quá 15 chữ số có nghĩa, cắt bớt
+        if (significant_digits > 15) {
+            // Tìm vị trí để cắt
+            int digits_to_keep = 15;
+            size_t cut_pos = 0;
+            int current_digits = 0;
+            
+            for (size_t i = 0; i < result.length(); i++) {
+                if (result[i] == '.') continue;
+                if (result[i] != '0') {
+                    current_digits++;
+                    if (current_digits > digits_to_keep) {
+                        cut_pos = i;
+                        break;
+                    }
+                } else if (current_digits > 0) {
+                    current_digits++;
+                    if (current_digits > digits_to_keep) {
+                        cut_pos = i;
+                        break;
+                    }
+                }
+            }
+            
+            if (cut_pos > 0) {
+                result = result.substr(0, cut_pos);
+                // Loại bỏ số 0 cuối sau khi cắt, nhưng giữ lại ít nhất một số 0
+                while (result.back() == '0' && result.length() > dot_pos + 2) {
+                    result.pop_back();
+                }
+            }
+        }
+        
+        return result;
+    }
+
     std::string type_of(const Value &val)
     {
         if (std::holds_alternative<std::monostate>(val))
@@ -49,9 +123,7 @@ namespace Linh
         }
         if (std::holds_alternative<double>(val))
         {
-            std::ostringstream oss;
-            oss << std::fixed << std::setprecision(15) << std::get<double>(val);
-            return oss.str();
+            return format_float_linh(std::get<double>(val));
         }
         if (std::holds_alternative<bool>(val))
             return std::get<bool>(val) ? "true" : "false";

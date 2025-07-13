@@ -352,8 +352,8 @@ namespace Linh
         struct PrintStmt : Stmt
         {
             Token keyword;
-            ExprPtr expression;
-            PrintStmt(Token kw, ExprPtr expr) : keyword(std::move(kw)), expression(std::move(expr)) {}
+            std::vector<ExprPtr> expressions;
+            PrintStmt(Token kw, std::vector<ExprPtr> exprs) : keyword(std::move(kw)), expressions(std::move(exprs)) {}
             void accept(StmtVisitor *visitor) override { visitor->visitPrintStmt(this); }
             int getLine() const { return keyword.line; }
             int getCol() const { return keyword.column_start; }
@@ -542,6 +542,8 @@ namespace Linh
             IfStmt(Token kw, ExprPtr cond, StmtPtr then_b, StmtPtr else_b)
                 : keyword_if(std::move(kw)), condition(std::move(cond)), then_branch(std::move(then_b)), else_branch(std::move(else_b)) {}
             void accept(StmtVisitor *visitor) override { visitor->visitIfStmt(this); }
+            int getLine() const { return keyword_if.line; }
+            int getCol() const { return keyword_if.column_start; }
         };
 
         struct UninitLiteralExpr : Expr

@@ -1,0 +1,15 @@
+try {
+    var result = 10 / 0
+    print("This should not print")
+} catch (error) {
+    print("Caught division error: " + error)
+}
+
+try {
+    var result = 5 % 0
+    print("This should not print")
+} catch (error) {
+    print("Caught modulo error: " + error)
+}
+
+print("All tests completed!") 

@@ -5,6 +5,8 @@
 #include <unordered_set>                      // <--- add this line
 #include "../Parser/Parser.hpp"               // thêm dòng này
 #include "../../Bytecode/BytecodeEmitter.hpp" // Thêm dòng này để dùng BytecodeEmitter
+#include <chrono>
+#include <sstream>
 
 namespace Linh
 {
@@ -17,15 +19,53 @@ namespace Linh
 
         void SemanticAnalyzer::analyze(const AST::StmtList &stmts, bool reset_state)
         {
+            auto start_time = std::chrono::high_resolution_clock::now();
+            
             if (reset_state)
             {
                 var_scopes.clear();
                 global_functions.clear();
+                type_cache.clear();
+                error_cache.clear();
+                cache_hits = 0;
+                cache_misses = 0;
+                should_early_exit = false;
+                
                 begin_scope();
-                for (const auto &stmt : stmts)
-                {
-                    if (stmt)
-                        stmt->accept(this);
+                
+                if (parallel_analysis_enabled) {
+                    // Parallel analysis for large codebases
+                    std::vector<std::future<std::vector<Linh::Error>>> futures;
+                    for (const auto &stmt : stmts) {
+                        if (stmt) {
+                            auto s = stmt.get();
+                            futures.push_back(std::async(std::launch::async, [this, s]() {
+                                std::vector<Linh::Error> local_errors;
+                                SemanticAnalyzer local_analyzer;
+                                local_analyzer.enable_caching(caching_enabled);
+                                local_analyzer.enable_early_exit(early_exit_enabled);
+                                local_analyzer.enable_parallel_analysis(false);
+                                try {
+                                    s->accept(&local_analyzer);
+                                    local_errors = local_analyzer.errors;
+                                } catch (...) {}
+                                return local_errors;
+                            }));
+                        }
+                    }
+                    
+                    // Collect results
+                    for (auto& future : futures) {
+                        auto local_errors = future.get();
+                        errors.insert(errors.end(), local_errors.begin(), local_errors.end());
+                    }
+                } else {
+                    // Sequential analysis
+                    for (const auto &stmt : stmts)
+                    {
+                        if (stmt && !should_early_exit)
+                            stmt->accept(this);
+                    }
                 }
                 end_scope();
             }
@@ -38,10 +78,80 @@ namespace Linh
                 }
                 for (const auto &stmt : stmts)
                 {
-                    if (stmt)
+                    if (stmt && !should_early_exit)
                         stmt->accept(this);
                 }
             }
+            
+            auto end_time = std::chrono::high_resolution_clock::now();
+            analysis_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        }
+
+        // Helper methods for optimization
+        std::string SemanticAnalyzer::get_expression_hash(AST::Expr* expr) {
+            if (!expr) return "null";
+            
+            std::ostringstream oss;
+            oss << expr;
+            
+            return oss.str();
+        }
+        
+        std::string SemanticAnalyzer::get_error_key(const AST::Stmt* stmt, const std::string& error_type) {
+            if (!stmt) return "null:" + error_type;
+            std::ostringstream oss;
+            oss << stmt << ":" << error_type;
+            return oss.str();
+        }
+        std::string SemanticAnalyzer::get_error_key(const AST::Expr* expr, const std::string& error_type) {
+            if (!expr) return "null:" + error_type;
+            std::ostringstream oss;
+            oss << expr << ":" << error_type;
+            return oss.str();
+        }
+        bool SemanticAnalyzer::check_cached_error(const AST::Stmt* stmt, const std::string& error_type) {
+            if (!caching_enabled) return false;
+            std::string key = get_error_key(stmt, error_type);
+            auto it = error_cache.find(key);
+            if (it != error_cache.end()) { cache_hits++; return it->second; }
+            cache_misses++;
+            return false;
+        }
+        bool SemanticAnalyzer::check_cached_error(const AST::Expr* expr, const std::string& error_type) {
+            if (!caching_enabled) return false;
+            std::string key = get_error_key(expr, error_type);
+            auto it = error_cache.find(key);
+            if (it != error_cache.end()) { cache_hits++; return it->second; }
+            cache_misses++;
+            return false;
+        }
+        void SemanticAnalyzer::cache_error(const AST::Stmt* stmt, const std::string& error_type) {
+            if (!caching_enabled) return;
+            std::string key = get_error_key(stmt, error_type);
+            error_cache[key] = true;
+        }
+        void SemanticAnalyzer::cache_error(const AST::Expr* expr, const std::string& error_type) {
+            if (!caching_enabled) return;
+            std::string key = get_error_key(expr, error_type);
+            error_cache[key] = true;
+        }
+        
+        void SemanticAnalyzer::analyze_statement_parallel(AST::Stmt* stmt) {
+            if (!stmt) return;
+            
+            try {
+                stmt->accept(this);
+            } catch (...) {
+                // Handle exceptions in parallel processing
+            }
+        }
+        
+        std::vector<Linh::Error> SemanticAnalyzer::merge_errors(const std::vector<std::vector<Linh::Error>>& error_lists) {
+            std::vector<Linh::Error> merged;
+            for (const auto& error_list : error_lists) {
+                merged.insert(merged.end(), error_list.begin(), error_list.end());
+            }
+            return merged;
         }
 
         void SemanticAnalyzer::begin_scope()
@@ -99,16 +209,29 @@ namespace Linh
 
         void SemanticAnalyzer::visitExpressionStmt(AST::ExpressionStmt *stmt)
         {
+            if (should_early_exit) return;
+            
             if (stmt->expression)
                 stmt->expression->accept(this);
         }
         void SemanticAnalyzer::visitPrintStmt(AST::PrintStmt *stmt)
         {
-            if (stmt->expression)
-                stmt->expression->accept(this);
+            for (const auto& expr : stmt->expressions) {
+                if (expr) {
+                    expr->accept(this);
+                }
+            }
         }
         void SemanticAnalyzer::visitVarDeclStmt(AST::VarDeclStmt *stmt)
         {
+            // Early exit check
+            if (should_early_exit) return;
+            
+            // Check cached error
+            if (check_cached_error(static_cast<const AST::Stmt*>(stmt), "var_decl_error")) {
+                return;
+            }
+            
             // Check for sol type/value rules
             bool type_is_sol = is_sol_type(stmt->declared_type);
             bool value_is_sol = is_sol_expr(stmt->initializer);
@@ -588,10 +711,12 @@ namespace Linh
         }
         std::any SemanticAnalyzer::visitIdentifierExpr(AST::IdentifierExpr *expr)
         {
-            // Allow built-in functions as identifiers without declaration
+            // Allow built-in functions and packages as identifiers without declaration
             static const std::unordered_set<std::string> builtin_funcs = {
                 "input", "type", "str", "int", "float", "bool", "uint", "id"}; // Thêm "id"
-            if (builtin_funcs.count(expr->name.lexeme))
+            static const std::unordered_set<std::string> builtin_packages = {
+                "math"}; // Built-in packages
+            if (builtin_funcs.count(expr->name.lexeme) || builtin_packages.count(expr->name.lexeme))
             {
                 return {};
             }
@@ -604,7 +729,7 @@ namespace Linh
                 std::string member = lex.substr(dot_pos + 1);
                 
                 // Check if this is a package constant (e.g., math.pi)
-                if (imported_packages.count(base))
+                if (imported_packages.count(base) || base == "math")
                 {
                     // This is a package constant, check if it exists
                     if (Linh::LiPM::get_constant(base, member).index() != 0) // Not sol
@@ -891,11 +1016,11 @@ namespace Linh
                 std::string package_name = id->name.lexeme;
                 std::string property_name = expr->property_token.lexeme;
                 
-                // Kiểm tra xem package có được import không
-                if (imported_packages.count(package_name) > 0)
+                // Kiểm tra xem package có được import không hoặc là built-in package
+                if (imported_packages.count(package_name) > 0 || package_name == "math")
                 {
 #ifdef _DEBUG
-                    std::cerr << "[DEBUG] Found imported package: " << package_name << "." << property_name << std::endl;
+                    std::cerr << "[DEBUG] Found package: " << package_name << "." << property_name << std::endl;
 #endif
                     // Đánh dấu đây là package constant
                     expr->is_package_constant = true;

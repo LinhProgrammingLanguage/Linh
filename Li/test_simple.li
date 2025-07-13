@@ -1,0 +1,11 @@
+var a = 100
+print("a = &{a}")
+
+import math
+print("pi = &{math.pi}")
+
+var x = 5
+var y = 10
+print("sum = &{x + y}")
+
+print("multiple: &{x}&{y}&{x + y}") 

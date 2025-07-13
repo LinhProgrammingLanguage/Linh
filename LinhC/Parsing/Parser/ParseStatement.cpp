@@ -70,11 +70,18 @@ namespace Linh
     {
         Token keyword = previous(); // previous() là PRINT_KW
         consume(TokenType::LPAREN, "Thiếu '(' sau 'print'.");
-        AST::ExprPtr value = expression();
+        
+        std::vector<AST::ExprPtr> expressions;
+        if (!check(TokenType::RPAREN)) {
+            do {
+                expressions.push_back(expression());
+            } while (match({TokenType::COMMA}));
+        }
+        
         consume(TokenType::RPAREN, "Thiếu ')' sau đối số của print.");
         if (check(TokenType::SEMICOLON))
             consume(TokenType::SEMICOLON, "");
-        return std::make_unique<AST::PrintStmt>(std::move(keyword), std::move(value));
+        return std::make_unique<AST::PrintStmt>(std::move(keyword), std::move(expressions));
     }
 
     std::unique_ptr<AST::BlockStmt> Parser::block()

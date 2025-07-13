@@ -64,6 +64,7 @@ namespace Linh
 
         // Special
         PRINT,
+        PRINT_MULTIPLE, // <--- Thêm opcode này để xử lý print nhiều giá trị
         INPUT,
         TYPEOF,
         HALT,

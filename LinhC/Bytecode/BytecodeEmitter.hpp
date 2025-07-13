@@ -3,6 +3,8 @@
 #include "Bytecode.hpp"
 #include <unordered_map>
 #include <string>
+#include <optional>
+#include "../../LiVM/Value/Value.hpp"
 
 namespace Linh
 {
@@ -23,6 +25,10 @@ namespace Linh
         const std::unordered_map<std::string, FunctionInfo> &get_functions() const { return functions; }
         std::unordered_map<std::string, FunctionInfo> &get_functions() { return functions; } // <--- Thêm dòng này
 
+        // Optimization methods
+        void enable_constant_folding(bool enable = true) { constant_folding_enabled = enable; }
+        void enable_dead_code_elimination(bool enable = true) { dead_code_elimination_enabled = enable; }
+        
         // ExprVisitor
         std::any visitBinaryExpr(AST::BinaryExpr *expr) override;
         std::any visitUnaryExpr(AST::UnaryExpr *expr) override;
@@ -69,6 +75,19 @@ namespace Linh
         // --- Add for function support ---
         std::unordered_map<std::string, FunctionInfo> functions;
         // -------------------------------
+
+        // Constant folding helper
+        std::optional<Value> try_constant_fold(AST::BinaryExpr* expr);
+        std::optional<Value> try_constant_fold(AST::UnaryExpr* expr);
+        bool is_constant_expression(AST::Expr* expr);
+        
+        // Dead code elimination helper
+        bool is_dead_code(AST::Stmt* stmt);
+        void remove_dead_code(AST::StmtList& stmts);
+        
+        // Optimization flags
+        bool constant_folding_enabled = true;
+        bool dead_code_elimination_enabled = true;
 
         int get_var_index(const std::string &name);
         void emit_instr(OpCode op, BytecodeValue val = {}, int line = 0, int col = 0);

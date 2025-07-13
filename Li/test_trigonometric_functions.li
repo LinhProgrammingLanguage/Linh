@@ -1,0 +1,48 @@
+import math
+
+print("Testing trigonometric functions:")
+
+print("\nTesting math.sin():")
+print(math.sin(0))           // 0
+print(math.sin(math.pi/2))   // 1
+print(math.sin(math.pi))     // 0
+print(math.sin(3*math.pi/2)) // -1
+
+print("\nTesting math.cos():")
+print(math.cos(0))           // 1
+print(math.cos(math.pi/2))   // 0
+print(math.cos(math.pi))     // -1
+print(math.cos(3*math.pi/2)) // 0
+
+print("\nTesting math.tan():")
+print(math.tan(0))           // 0
+print(math.tan(math.pi/4))   // 1
+print(math.tan(-math.pi/4))  // -1
+
+print("\nTesting math.radians():")
+print(math.radians(0))       // 0
+print(math.radians(90))      // π/2
+print(math.radians(180))     // π
+print(math.radians(360))     // 2π
+
+print("\nTesting math.asin():")
+print(math.asin(0))          // 0
+print(math.asin(1))          // π/2
+print(math.asin(-1))         // -π/2
+
+print("\nTesting math.acos():")
+print(math.acos(1))          // 0
+print(math.acos(0))          // π/2
+print(math.acos(-1))         // π
+
+print("\nTesting math.atan():")
+print(math.atan(0))          // 0
+print(math.atan(1))          // π/4
+print(math.atan(-1))         // -π/4
+
+print("\nTesting math.atan2():")
+print(math.atan2(0, 1))      // 0
+print(math.atan2(1, 0))      // π/2
+print(math.atan2(0, -1))     // π
+print(math.atan2(-1, 0))     // -π/2
+print(math.atan2(1, 1))      // π/4 

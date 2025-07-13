@@ -1,10 +1,170 @@
 #include "BytecodeEmitter.hpp"
 #include <unordered_set>
 #include <iostream>
+#include "../../LiVM/Value/Value.hpp" // Để sử dụng Value cho constant folding
 
 namespace Linh
 {
     BytecodeEmitter::BytecodeEmitter() {}
+
+    // Constant folding implementation
+    std::optional<Value> BytecodeEmitter::try_constant_fold(AST::BinaryExpr* expr) {
+        if (!constant_folding_enabled) return std::nullopt;
+        
+        // Check if both operands are constants
+        if (!is_constant_expression(expr->left.get()) || !is_constant_expression(expr->right.get())) {
+            return std::nullopt;
+        }
+        
+        // Get constant values
+        auto left_literal = dynamic_cast<AST::LiteralExpr*>(expr->left.get());
+        auto right_literal = dynamic_cast<AST::LiteralExpr*>(expr->right.get());
+        
+        if (!left_literal || !right_literal) return std::nullopt;
+        
+        // Perform constant folding based on operator
+        switch (expr->op.type) {
+            case TokenType::PLUS: {
+                if (std::holds_alternative<int64_t>(left_literal->value) && 
+                    std::holds_alternative<int64_t>(right_literal->value)) {
+                    return Value(std::get<int64_t>(left_literal->value) + std::get<int64_t>(right_literal->value));
+                }
+                if (std::holds_alternative<double>(left_literal->value) && 
+                    std::holds_alternative<double>(right_literal->value)) {
+                    return Value(std::get<double>(left_literal->value) + std::get<double>(right_literal->value));
+                }
+                break;
+            }
+            case TokenType::MINUS: {
+                if (std::holds_alternative<int64_t>(left_literal->value) && 
+                    std::holds_alternative<int64_t>(right_literal->value)) {
+                    return Value(std::get<int64_t>(left_literal->value) - std::get<int64_t>(right_literal->value));
+                }
+                if (std::holds_alternative<double>(left_literal->value) && 
+                    std::holds_alternative<double>(right_literal->value)) {
+                    return Value(std::get<double>(left_literal->value) - std::get<double>(right_literal->value));
+                }
+                break;
+            }
+            case TokenType::STAR: {
+                if (std::holds_alternative<int64_t>(left_literal->value) && 
+                    std::holds_alternative<int64_t>(right_literal->value)) {
+                    return Value(std::get<int64_t>(left_literal->value) * std::get<int64_t>(right_literal->value));
+                }
+                if (std::holds_alternative<double>(left_literal->value) && 
+                    std::holds_alternative<double>(right_literal->value)) {
+                    return Value(std::get<double>(left_literal->value) * std::get<double>(right_literal->value));
+                }
+                break;
+            }
+            case TokenType::SLASH: {
+                if (std::holds_alternative<int64_t>(left_literal->value) && 
+                    std::holds_alternative<int64_t>(right_literal->value)) {
+                    auto right_val = std::get<int64_t>(right_literal->value);
+                    if (right_val != 0) {
+                        return Value(std::get<int64_t>(left_literal->value) / right_val);
+                    }
+                }
+                if (std::holds_alternative<double>(left_literal->value) && 
+                    std::holds_alternative<double>(right_literal->value)) {
+                    auto right_val = std::get<double>(right_literal->value);
+                    if (right_val != 0.0) {
+                        return Value(std::get<double>(left_literal->value) / right_val);
+                    }
+                }
+                break;
+            }
+            case TokenType::EQ_EQ: {
+                if (left_literal->value == right_literal->value) {
+                    return Value(true);
+                } else {
+                    return Value(false);
+                }
+            }
+            case TokenType::NOT_EQ: {
+                if (left_literal->value != right_literal->value) {
+                    return Value(true);
+                } else {
+                    return Value(false);
+                }
+            }
+            case TokenType::LT: {
+                if (std::holds_alternative<int64_t>(left_literal->value) && 
+                    std::holds_alternative<int64_t>(right_literal->value)) {
+                    return Value(std::get<int64_t>(left_literal->value) < std::get<int64_t>(right_literal->value));
+                }
+                if (std::holds_alternative<double>(left_literal->value) && 
+                    std::holds_alternative<double>(right_literal->value)) {
+                    return Value(std::get<double>(left_literal->value) < std::get<double>(right_literal->value));
+                }
+                break;
+            }
+            case TokenType::GT: {
+                if (std::holds_alternative<int64_t>(left_literal->value) && 
+                    std::holds_alternative<int64_t>(right_literal->value)) {
+                    return Value(std::get<int64_t>(left_literal->value) > std::get<int64_t>(right_literal->value));
+                }
+                if (std::holds_alternative<double>(left_literal->value) && 
+                    std::holds_alternative<double>(right_literal->value)) {
+                    return Value(std::get<double>(left_literal->value) > std::get<double>(right_literal->value));
+                }
+                break;
+            }
+        }
+        
+        return std::nullopt;
+    }
+    
+    std::optional<Value> BytecodeEmitter::try_constant_fold(AST::UnaryExpr* expr) {
+        if (!constant_folding_enabled) return std::nullopt;
+        
+        if (!is_constant_expression(expr->right.get())) {
+            return std::nullopt;
+        }
+        
+        auto literal = dynamic_cast<AST::LiteralExpr*>(expr->right.get());
+        if (!literal) return std::nullopt;
+        
+        switch (expr->op.type) {
+            case TokenType::MINUS: {
+                if (std::holds_alternative<int64_t>(literal->value)) {
+                    return Value(-std::get<int64_t>(literal->value));
+                }
+                if (std::holds_alternative<double>(literal->value)) {
+                    return Value(-std::get<double>(literal->value));
+                }
+                break;
+            }
+            case TokenType::NOT:
+            case TokenType::NOT_KW: {
+                if (std::holds_alternative<bool>(literal->value)) {
+                    return Value(!std::get<bool>(literal->value));
+                }
+                break;
+            }
+        }
+        
+        return std::nullopt;
+    }
+    
+    bool BytecodeEmitter::is_constant_expression(AST::Expr* expr) {
+        return dynamic_cast<AST::LiteralExpr*>(expr) != nullptr;
+    }
+    
+    bool BytecodeEmitter::is_dead_code(AST::Stmt* stmt) {
+        if (!dead_code_elimination_enabled) return false;
+        
+        // Check for unreachable code after return/break/continue
+        // This is a simplified implementation
+        return false;
+    }
+    
+    void BytecodeEmitter::remove_dead_code(AST::StmtList& stmts) {
+        if (!dead_code_elimination_enabled) return;
+        
+        // Remove unreachable statements
+        // This is a simplified implementation
+    }
 
     void BytecodeEmitter::emit(const AST::StmtList &stmts)
     {
@@ -95,6 +255,20 @@ namespace Linh
 
     std::any BytecodeEmitter::visitBinaryExpr(AST::BinaryExpr *expr)
     {
+        // Try constant folding first
+        auto folded_result = try_constant_fold(expr);
+        if (folded_result.has_value()) {
+            // Emit the constant result directly
+            if (std::holds_alternative<int64_t>(*folded_result)) {
+                emit_instr(OpCode::PUSH_INT, std::get<int64_t>(*folded_result), expr->getLine(), expr->getCol());
+            } else if (std::holds_alternative<double>(*folded_result)) {
+                emit_instr(OpCode::PUSH_FLOAT, std::get<double>(*folded_result), expr->getLine(), expr->getCol());
+            } else if (std::holds_alternative<bool>(*folded_result)) {
+                emit_instr(OpCode::PUSH_BOOL, std::get<bool>(*folded_result), expr->getLine(), expr->getCol());
+            }
+            return {};
+        }
+        
         // Evaluate left and right
         if (expr->left)
             expr->left->accept(this);
@@ -175,6 +349,20 @@ namespace Linh
 
     std::any BytecodeEmitter::visitUnaryExpr(AST::UnaryExpr *expr)
     {
+        // Try constant folding first
+        auto folded_result = try_constant_fold(expr);
+        if (folded_result.has_value()) {
+            // Emit the constant result directly
+            if (std::holds_alternative<int64_t>(*folded_result)) {
+                emit_instr(OpCode::PUSH_INT, std::get<int64_t>(*folded_result), expr->getLine(), expr->getCol());
+            } else if (std::holds_alternative<double>(*folded_result)) {
+                emit_instr(OpCode::PUSH_FLOAT, std::get<double>(*folded_result), expr->getLine(), expr->getCol());
+            } else if (std::holds_alternative<bool>(*folded_result)) {
+                emit_instr(OpCode::PUSH_BOOL, std::get<bool>(*folded_result), expr->getLine(), expr->getCol());
+            }
+            return {};
+        }
+        
         if (expr->right)
             expr->right->accept(this);
         switch (expr->op.type)
@@ -246,9 +434,19 @@ namespace Linh
 
     void BytecodeEmitter::visitPrintStmt(AST::PrintStmt *stmt)
     {
-        if (stmt->expression)
-            stmt->expression->accept(this);
-        emit_instr(OpCode::PRINT, {}, stmt->getLine(), stmt->getCol());
+        // Emit code for all expressions
+        for (const auto& expr : stmt->expressions) {
+            if (expr) {
+                expr->accept(this);
+            }
+        }
+        
+        // Use PRINT_MULTIPLE if there are multiple expressions, otherwise use PRINT
+        if (stmt->expressions.size() > 1) {
+            emit_instr(OpCode::PRINT_MULTIPLE, static_cast<int64_t>(stmt->expressions.size()), stmt->getLine(), stmt->getCol());
+        } else {
+            emit_instr(OpCode::PRINT, {}, stmt->getLine(), stmt->getCol());
+        }
     }
 
     void BytecodeEmitter::visitExpressionStmt(AST::ExpressionStmt *stmt)
@@ -295,7 +493,47 @@ namespace Linh
         }
     }
 
-    void BytecodeEmitter::visitIfStmt(AST::IfStmt *) {}
+    void BytecodeEmitter::visitIfStmt(AST::IfStmt *stmt)
+    {
+        // if (condition) then_branch else else_branch
+        // [condition]
+        // JMP_IF_FALSE else_branch
+        // [then_branch]
+        // JMP end
+        // else_branch:
+        // [else_branch]
+        // end:
+
+        // Evaluate condition
+        if (stmt->condition)
+            stmt->condition->accept(this);
+
+        // Placeholder for JMP_IF_FALSE to else branch
+        size_t jmp_if_false_pos = chunk.size();
+        emit_instr(OpCode::JMP_IF_FALSE, int64_t(-1), stmt->getLine(), stmt->getCol()); // placeholder
+
+        // Emit then branch
+        if (stmt->then_branch)
+            stmt->then_branch->accept(this);
+
+        // Jump to end (skip else branch)
+        size_t jmp_to_end_pos = chunk.size();
+        emit_instr(OpCode::JMP, int64_t(-1), stmt->getLine(), stmt->getCol()); // placeholder
+
+        // Else branch position
+        size_t else_pos = chunk.size();
+        if (stmt->else_branch)
+            stmt->else_branch->accept(this);
+
+        // End position
+        size_t end_pos = chunk.size();
+
+        // Fix JMP_IF_FALSE to jump to else branch
+        chunk[jmp_if_false_pos].operand = int64_t(else_pos);
+
+        // Fix JMP to jump to end
+        chunk[jmp_to_end_pos].operand = int64_t(end_pos);
+    }
     void BytecodeEmitter::visitWhileStmt(AST::WhileStmt *stmt)
     {
         // while (cond) body
@@ -751,7 +989,24 @@ namespace Linh
                 auto *subexpr = std::get<AST::ExprPtr>(part).get();
                 if (subexpr)
                 {
-                    subexpr->accept(this);
+                    // Nếu là MemberExpr và là package constant, emit đúng LOAD_PACKAGE_CONST
+                    if (auto member = dynamic_cast<AST::MemberExpr *>(subexpr)) {
+                        if (member->is_package_constant) {
+                            std::string full_name = member->package_name + "." + member->constant_name;
+                            emit_instr(OpCode::LOAD_PACKAGE_CONST, full_name, member->getLine(), member->getCol());
+                        } else if (auto id = dynamic_cast<AST::IdentifierExpr *>(member->object.get())) {
+                            if (id->name.lexeme == "math") {
+                                std::string full_name = id->name.lexeme + "." + member->property_token.lexeme;
+                                emit_instr(OpCode::LOAD_PACKAGE_CONST, full_name, member->getLine(), member->getCol());
+                            } else {
+                                subexpr->accept(this);
+                            }
+                        } else {
+                            subexpr->accept(this);
+                        }
+                    } else {
+                        subexpr->accept(this);
+                    }
                     emit_instr(OpCode::PUSH_STR, std::string(""), expr->getLine(), expr->getCol());
                     emit_instr(OpCode::ADD, {}, expr->getLine(), expr->getCol()); // ép về string
                 }
@@ -817,6 +1072,50 @@ namespace Linh
 
     std::any BytecodeEmitter::visitMethodCallExpr(AST::MethodCallExpr *expr)
     {
+        // Math package methods: abs, ceil, floor, round, trunc
+        auto id = dynamic_cast<AST::IdentifierExpr *>(expr->object.get());
+        if (id && id->name.lexeme == "math")
+        {
+            // Check if it's a math function
+            if ((expr->method_name == "abs" || expr->method_name == "ceil" || 
+                 expr->method_name == "floor" || expr->method_name == "round" || 
+                 expr->method_name == "trunc" || expr->method_name == "sin" ||
+                 expr->method_name == "cos" || expr->method_name == "tan" ||
+                 expr->method_name == "asin" || expr->method_name == "acos" ||
+                 expr->method_name == "atan" || expr->method_name == "radians" ||
+                 expr->method_name == "sinh" || expr->method_name == "cosh" || expr->method_name == "tanh" ||
+                 expr->method_name == "asinh" || expr->method_name == "acosh" || expr->method_name == "atanh" ||
+                 expr->method_name == "sqrt" || expr->method_name == "cbrt" ||
+                 expr->method_name == "exp" || expr->method_name == "expm1" ||
+                 expr->method_name == "log" || expr->method_name == "log1p" ||
+                 expr->method_name == "log10" || expr->method_name == "log2") && expr->arguments.size() == 1)
+            {
+                // Emit the argument first
+                expr->arguments[0]->accept(this);
+                // Then emit the function call
+                emit_instr(OpCode::CALL, expr->method_name, expr->getLine(), expr->getCol());
+                return {};
+            }
+            else if (expr->method_name == "atan2" && expr->arguments.size() == 2)
+            {
+                // Emit the arguments in reverse order (y first, then x)
+                expr->arguments[1]->accept(this); // y
+                expr->arguments[0]->accept(this); // x
+                // Then emit the function call
+                emit_instr(OpCode::CALL, expr->method_name, expr->getLine(), expr->getCol());
+                return {};
+            }
+            else if (expr->method_name == "pow" && expr->arguments.size() == 2)
+            {
+                // Emit the arguments in reverse order (exponent first, then base)
+                expr->arguments[1]->accept(this); // exponent
+                expr->arguments[0]->accept(this); // base
+                // Then emit the function call
+                emit_instr(OpCode::CALL, expr->method_name, expr->getLine(), expr->getCol());
+                return {};
+            }
+        }
+        
         // Map methods: delete, clear, keys, values
         if (expr->method_name == "delete" && expr->arguments.size() == 1)
         {

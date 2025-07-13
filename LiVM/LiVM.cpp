@@ -1,4 +1,5 @@
 #include "LiVM.hpp"
+#include "Value/Value.hpp" // Để sử dụng make_array() và make_map()
 #include "iostream/iostream.hpp"
 #include "Loop.hpp"
 #include <cmath>
@@ -8,6 +9,7 @@
 #include "type.hpp"
 #include <variant>
 #include "../LiPM/LiPM.hpp" // Thêm dòng này cho LiPM support
+#include <functional>
 
 #ifdef _DEBUG
 // Helper to print a Value for debug
@@ -47,7 +49,90 @@ struct TryFrame
 namespace Linh
 {
 
-    LiVM::LiVM() {}
+    LiVM::LiVM() {
+        // Pre-reserve stack space for better performance
+        if (stack_optimization_enabled) {
+            stack.reserve(STACK_RESERVE_SIZE);
+        }
+    }
+
+    // Optimization helpers implementation
+    void LiVM::cache_instruction(size_t ip, const Instruction& instr) {
+        if (!instruction_caching_enabled) return;
+        
+        // Cache frequently executed instructions
+        instruction_cache[ip] = [this, instr]() {
+            // Execute the instruction directly without lookup
+            switch (instr.opcode) {
+                case OpCode::PUSH_INT:
+                    push(Value(std::get<int64_t>(instr.operand)));
+                    break;
+                case OpCode::PUSH_FLOAT:
+                    push(Value(std::get<double>(instr.operand)));
+                    break;
+                case OpCode::PUSH_BOOL:
+                    push(Value(std::get<bool>(instr.operand)));
+                    break;
+                case OpCode::PUSH_STR:
+                    push(Value(std::get<std::string>(instr.operand)));
+                    break;
+                case OpCode::POP:
+                    pop();
+                    break;
+                case OpCode::ADD:
+                case OpCode::SUB:
+                case OpCode::MUL:
+                case OpCode::DIV:
+                case OpCode::MOD:
+                case OpCode::HASH:
+                case OpCode::AMP:
+                case OpCode::PIPE:
+                case OpCode::CARET:
+                case OpCode::LT_LT:
+                case OpCode::GT_GT:
+                    math_binary_op(*this, instr);
+                    break;
+                default:
+                    // For complex instructions, don't cache
+                    break;
+            }
+        };
+    }
+    
+    void LiVM::optimize_stack() {
+        if (!stack_optimization_enabled) return;
+        
+        // Shrink stack if it's too large
+        if (stack.size() < STACK_SHRINK_THRESHOLD && stack.capacity() > STACK_RESERVE_SIZE) {
+            stack.shrink_to_fit();
+        }
+        
+        // Ensure minimum capacity
+        if (stack.capacity() < STACK_RESERVE_SIZE) {
+            stack.reserve(STACK_RESERVE_SIZE);
+        }
+    }
+    
+    void LiVM::track_hot_path(size_t ip) {
+        if (!hot_path_optimization_enabled) return;
+        
+        hot_paths.insert(ip);
+        
+        // If this is a hot path, consider caching the instruction
+        if (hot_paths.count(ip) > 3) { // Execute 3+ times to be considered hot
+            // Could implement more sophisticated hot path detection here
+        }
+    }
+    
+    void LiVM::execute_cached_instruction(size_t ip) {
+        auto it = instruction_cache.find(ip);
+        if (it != instruction_cache.end()) {
+            cache_hits++;
+            it->second();
+        } else {
+            cache_misses++;
+        }
+    }
 
     void LiVM::push(const Value &val)
     {
@@ -183,16 +268,24 @@ namespace Linh
             return "ARRAY_LEN";
         case OpCode::ARRAY_APPEND:
             return "ARRAY_APPEND";
-        case OpCode::MAP_KEYS:
-            return "MAP_KEYS";
-        case OpCode::MAP_VALUES:
-            return "MAP_VALUES";
+        case OpCode::ARRAY_REMOVE:
+            return "ARRAY_REMOVE";
         case OpCode::ARRAY_CLEAR:
             return "ARRAY_CLEAR";
         case OpCode::ARRAY_CLONE:
             return "ARRAY_CLONE";
         case OpCode::ARRAY_POP:
             return "ARRAY_POP";
+        case OpCode::MAP_KEYS:
+            return "MAP_KEYS";
+        case OpCode::MAP_VALUES:
+            return "MAP_VALUES";
+        case OpCode::MAP_DELETE:
+            return "MAP_DELETE";
+        case OpCode::MAP_CLEAR:
+            return "MAP_CLEAR";
+        case OpCode::PRINT_MULTIPLE:
+            return "PRINT_MULTIPLE";
         default:
             return "UNKNOWN";
         }
@@ -200,8 +293,21 @@ namespace Linh
 
     void LiVM::run(const BytecodeChunk &chunk)
     {
+        std::cerr << "[DEBUG] VM::run() started with " << chunk.size() << " instructions" << std::endl;
+        auto start_time = std::chrono::high_resolution_clock::now();
+        
         ip = 0;
         std::vector<TryFrame> try_stack;
+        
+        // Reset performance counters
+        instruction_count = 0;
+        cache_hits = 0;
+        cache_misses = 0;
+        
+        // Pre-optimize stack
+        if (stack_optimization_enabled) {
+            stack.reserve(STACK_RESERVE_SIZE);
+        }
 
 #ifdef _DEBUG
         // --- Print full instruction list for debugging ---
@@ -229,6 +335,21 @@ namespace Linh
         while (ip < chunk.size())
         {
             const auto &instr = chunk[ip];
+            
+            std::cerr << "[DEBUG] VM executing instruction " << ip << ": " << opcode_name(instr.opcode) << std::endl;
+            
+            // Performance tracking
+            instruction_count++;
+            track_hot_path(ip);
+            
+            // Try cached instruction first
+            if (instruction_caching_enabled) {
+                std::cerr << "[DEBUG] Trying cached instruction for ip=" << ip << std::endl;
+                execute_cached_instruction(ip);
+                ip++;
+                continue;
+            }
+            
             try
             {
 #ifdef _DEBUG
@@ -250,6 +371,7 @@ namespace Linh
 #endif
                 switch (instr.opcode)
                 {
+                std::cerr << "[DEBUG] Entering switch case for opcode: " << opcode_name(instr.opcode) << std::endl;
                 case OpCode::PUSH_INT:
                     // If you want to support int128, check here
                     // For now, always push int64_t
@@ -346,9 +468,9 @@ namespace Linh
 #endif
                     bool result = false;
                     // If either is string, compare as string
-                    if (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b)) {
-                        std::string sa = std::holds_alternative<std::string>(a) ? std::get<std::string>(a) : Linh::to_str(a);
-                        std::string sb = std::holds_alternative<std::string>(b) ? std::get<std::string>(b) : Linh::to_str(b);
+                                                                    if (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b)) {
+                            std::string sa = std::holds_alternative<std::string>(a) ? std::get<std::string>(a) : Linh::to_str(a);
+                            std::string sb = std::holds_alternative<std::string>(b) ? std::get<std::string>(b) : Linh::to_str(b);
                         switch (instr.opcode) {
                             case OpCode::EQ: result = (sa == sb); break;
                             case OpCode::NEQ: result = (sa != sb); break;
@@ -446,13 +568,48 @@ namespace Linh
                 }
                 case OpCode::PRINT:
                 {
+                    std::cerr << "[DEBUG] PRINT opcode executed" << std::endl;
                     if (stack.empty())
                     {
                         // Nếu stack rỗng, tự động push sol để không lỗi underflow
                         stack.push_back(std::monostate{});
                     }
                     auto val = pop();
+                    std::cerr << "[DEBUG] PRINT: about to print: " << Linh::to_str(val) << std::endl;
                     LinhIO::linh_print(val);
+                    break;
+                }
+                case OpCode::PRINT_MULTIPLE:
+                {
+                    std::cerr << "[DEBUG] PRINT_MULTIPLE in second switch case" << std::endl;
+                    int64_t count = std::get<int64_t>(instr.operand);
+                    std::cerr << "[DEBUG] PRINT_MULTIPLE: count=" << count << ", stack_size=" << stack.size() << std::endl;
+                    if (stack.size() < static_cast<size_t>(count))
+                    {
+                        std::cerr << "[Line " << instr.line << " , Col " << instr.col << "] RuntimeError : VM stack underflow for PRINT_MULTIPLE" << std::endl;
+                        break;
+                    }
+                    
+                    // Pop all values and convert them to strings
+                    std::vector<std::string> strings;
+                    for (int i = 0; i < count; i++) {
+                        auto val = pop();
+                        std::cerr << "[DEBUG] PRINT_MULTIPLE: popped value " << i << ": " << Linh::to_str(val) << std::endl;
+                        strings.push_back(Linh::to_str(val));
+                    }
+                    
+                    // Reverse the strings to get correct order
+                    std::reverse(strings.begin(), strings.end());
+                    
+                    // Join strings with space separator (like Python's print)
+                    std::string result;
+                    for (size_t i = 0; i < strings.size(); i++) {
+                        if (i > 0) result += " ";
+                        result += strings[i];
+                    }
+                    
+                    std::cerr << "[DEBUG] PRINT_MULTIPLE: final result: '" << result << "'" << std::endl;
+                    LinhIO::linh_print(Value(result));
                     break;
                 }
                 case OpCode::PRINTF:
@@ -581,6 +738,82 @@ namespace Linh
                         int64_t result = Linh::len(val);
                         push(result);
                         break; // Đổi từ return sang break để tiếp tục thực thi opcode tiếp theo
+                    }
+                    // --- Math functions support ---
+                    if (fname == "pow")
+                    {
+                        // pow requires 2 arguments
+                        if (stack.size() < 2)
+                        {
+                            std::cerr << "VM: Math function 'pow' requires 2 arguments\n";
+                            push(Value{}); // Return sol
+                            break;
+                        }
+                        auto exponent = pop();
+                        auto base = pop();
+                        double basev = 0, exponentv = 0;
+                        
+                        if (std::holds_alternative<int64_t>(base))
+                            basev = static_cast<double>(std::get<int64_t>(base));
+                        else if (std::holds_alternative<double>(base))
+                            basev = std::get<double>(base);
+                        else
+                            basev = 0;
+                            
+                        if (std::holds_alternative<int64_t>(exponent))
+                            exponentv = static_cast<double>(std::get<int64_t>(exponent));
+                        else if (std::holds_alternative<double>(exponent))
+                            exponentv = std::get<double>(exponent);
+                        else
+                            exponentv = 0;
+                            
+                        push(std::pow(basev, exponentv));
+                        break;
+                    }
+                    else if (fname == "atan2")
+                    {
+                        // atan2 requires 2 arguments
+                        if (stack.size() < 2)
+                        {
+                            std::cerr << "VM: Math function 'atan2' requires 2 arguments\n";
+                            push(Value{}); // Return sol
+                            break;
+                        }
+                        auto y = pop();
+                        auto x = pop();
+                        double xv = 0, yv = 0;
+                        
+                        if (std::holds_alternative<int64_t>(x))
+                            xv = static_cast<double>(std::get<int64_t>(x));
+                        else if (std::holds_alternative<double>(x))
+                            xv = std::get<double>(x);
+                        else
+                            xv = 0;
+                            
+                        if (std::holds_alternative<int64_t>(y))
+                            yv = static_cast<double>(std::get<int64_t>(y));
+                        else if (std::holds_alternative<double>(y))
+                            yv = std::get<double>(y);
+                        else
+                            yv = 0;
+                            
+                        push(std::atan2(yv, xv));
+                        break;
+                    }
+                    
+                    auto math_func = Linh::LiPM::get_math_function(fname);
+                    if (math_func)
+                    {
+                        if (stack.empty())
+                        {
+                            std::cerr << "VM: Math function '" << fname << "' requires an argument\n";
+                            push(Value{}); // Return sol
+                            break;
+                        }
+                        auto val = pop();
+                        auto result = math_func(val);
+                        push(result);
+                        break;
                     }
                     if (!functions.count(fname))
                     {
@@ -741,11 +974,26 @@ namespace Linh
                                     if ((finstr.opcode == OpCode::DIV || finstr.opcode == OpCode::MOD) && bv == 0)
                                     {
                                         std::string err_msg = "Division by zero (int)";
+#ifdef _DEBUG
+                                        std::cerr << "[DEBUG] Division by zero detected. try_stack size: " << try_stack.size() << std::endl;
+                                        if (!try_stack.empty()) {
+                                            std::cerr << "[DEBUG] catch_ip: " << try_stack.back().catch_ip << ", current ip: " << ip << std::endl;
+                                        }
+#endif
                                         if (!try_stack.empty())
                                         {
-                                            variables[2] = err_msg;
+                                            // Get the error variable index from the try frame
+                                            int error_var_index = 1; // Default to 1 for "error"
+                                            if (!try_stack.empty() && try_stack.back().error_var == "error")
+                                            {
+                                                error_var_index = 1; // "error" variable is at index 1
+                                            }
+                                            variables[error_var_index] = err_msg;
                                             ip = try_stack.back().catch_ip;
-                                            goto function_returned;
+#ifdef _DEBUG
+                                            std::cerr << "[DEBUG] Jumping to catch block at ip: " << ip << std::endl;
+#endif
+                                            continue;
                                         }
                                         else
                                         {
@@ -764,9 +1012,15 @@ namespace Linh
                                         std::string err_msg = "Floor division by zero (int)";
                                         if (!try_stack.empty())
                                         {
-                                            variables[2] = err_msg;
+                                            // Get the error variable index from the try frame
+                                            int error_var_index = 1; // Default to 1 for "error"
+                                            if (!try_stack.empty() && try_stack.back().error_var == "error")
+                                            {
+                                                error_var_index = 1; // "error" variable is at index 1
+                                            }
+                                            variables[error_var_index] = err_msg;
                                             ip = try_stack.back().catch_ip;
-                                            goto function_returned;
+                                            continue;
                                         }
                                         else
                                         {
@@ -818,8 +1072,24 @@ namespace Linh
                                 case OpCode::DIV:
                                     if (bv == 0.0)
                                     {
-                                        std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Division by zero (float)" << std::endl;
-                                        return;
+                                        std::string err_msg = "Division by zero (float)";
+                                        if (!try_stack.empty())
+                                        {
+                                            // Get the error variable index from the try frame
+                                            int error_var_index = 1; // Default to 1 for "error"
+                                            if (!try_stack.empty() && try_stack.back().error_var == "error")
+                                            {
+                                                error_var_index = 1; // "error" variable is at index 1
+                                            }
+                                            variables[error_var_index] = err_msg;
+                                            ip = try_stack.back().catch_ip;
+                                            continue;
+                                        }
+                                        else
+                                        {
+                                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: " << err_msg << std::endl;
+                                            return;
+                                        }
                                     }
                                     else
                                     {
@@ -829,8 +1099,24 @@ namespace Linh
                                 case OpCode::MOD:
                                     if (bv == 0.0)
                                     {
-                                        std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Modulo by zero (float)" << std::endl;
-                                        return;
+                                        std::string err_msg = "Modulo by zero (float)";
+                                        if (!try_stack.empty())
+                                        {
+                                            // Get the error variable index from the try frame
+                                            int error_var_index = 1; // Default to 1 for "error"
+                                            if (!try_stack.empty() && try_stack.back().error_var == "error")
+                                            {
+                                                error_var_index = 1; // "error" variable is at index 1
+                                            }
+                                            variables[error_var_index] = err_msg;
+                                            ip = try_stack.back().catch_ip;
+                                            continue;
+                                        }
+                                        else
+                                        {
+                                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: " << err_msg << std::endl;
+                                            return;
+                                        }
                                     }
                                     else
                                     {
@@ -840,8 +1126,24 @@ namespace Linh
                                 case OpCode::HASH:
                                     if (bv == 0.0)
                                     {
-                                        std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: Floor division by zero (float)" << std::endl;
-                                        return;
+                                        std::string err_msg = "Floor division by zero (float)";
+                                        if (!try_stack.empty())
+                                        {
+                                            // Get the error variable index from the try frame
+                                            int error_var_index = 1; // Default to 1 for "error"
+                                            if (!try_stack.empty() && try_stack.back().error_var == "error")
+                                            {
+                                                error_var_index = 1; // "error" variable is at index 1
+                                            }
+                                            variables[error_var_index] = err_msg;
+                                            ip = try_stack.back().catch_ip;
+                                            continue;
+                                        }
+                                        else
+                                        {
+                                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: " << err_msg << std::endl;
+                                            return;
+                                        }
                                     }
                                     else
                                     {
@@ -1143,6 +1445,39 @@ namespace Linh
                             LinhIO::linh_print(val);
                             break;
                         }
+                        case OpCode::PRINT_MULTIPLE:
+                        {
+                            std::cerr << "[DEBUG] PRINT_MULTIPLE in second switch case" << std::endl;
+                            int64_t count = std::get<int64_t>(finstr.operand);
+                            std::cerr << "[DEBUG] PRINT_MULTIPLE: count=" << count << ", stack_size=" << stack.size() << std::endl;
+                            if (stack.size() < static_cast<size_t>(count))
+                            {
+                                std::cerr << "[Line " << finstr.line << " , Col " << finstr.col << "] RuntimeError : VM stack underflow for PRINT_MULTIPLE" << std::endl;
+                                break;
+                            }
+                            
+                            // Pop all values and convert them to strings
+                            std::vector<std::string> strings;
+                            for (int i = 0; i < count; i++) {
+                                auto val = pop();
+                                std::cerr << "[DEBUG] PRINT_MULTIPLE: popped value " << i << ": " << Linh::to_str(val) << std::endl;
+                                strings.push_back(Linh::to_str(val));
+                            }
+                            
+                            // Reverse the strings to get correct order
+                            std::reverse(strings.begin(), strings.end());
+                            
+                            // Join strings with space separator (like Python's print)
+                            std::string result;
+                            for (size_t i = 0; i < strings.size(); i++) {
+                                if (i > 0) result += " ";
+                                result += strings[i];
+                            }
+                            
+                            std::cerr << "[DEBUG] PRINT_MULTIPLE: final result: '" << result << "'" << std::endl;
+                            LinhIO::linh_print(Value(result));
+                            break;
+                        }
                         case OpCode::PRINTF:
                         {
                             auto val = pop();
@@ -1254,7 +1589,7 @@ namespace Linh
                         push(Value{}); // push uninit
                         break;
                     }
-                    Array arr = std::make_shared<std::vector<Value>>();
+                    Array arr = make_array();
                     arr->reserve(n);
                     // Pop n phần tử (theo thứ tự ngược lại)
                     for (int64_t i = 0; i < n; ++i)
@@ -1275,7 +1610,7 @@ namespace Linh
                         push(Value{}); // push uninit
                         break;
                     }
-                    Map map = std::make_shared<std::unordered_map<std::string, Value>>();
+                    Map map = make_map();
                     // Pop n cặp (value trước, key sau)
                     for (int64_t i = 0; i < n; ++i)
                     {
@@ -1490,7 +1825,8 @@ namespace Linh
                     if (std::holds_alternative<Array>(arr_val))
                     {
                         auto arr = std::get<Array>(arr_val);
-                        auto arr_clone = std::make_shared<std::vector<Value>>(*arr);
+                        auto arr_clone = make_array();
+                        *arr_clone = *arr;
                         push(arr_clone);
                     }
                     else
@@ -1696,7 +2032,7 @@ namespace Linh
                     if (std::holds_alternative<Map>(map_val))
                     {
                         auto map = std::get<Map>(map_val);
-                        Array arr = std::make_shared<std::vector<Value>>();
+                        Array arr = make_array();
                         for (const auto &kv : *map)
                         {
                             arr->push_back(kv.first);
@@ -1722,7 +2058,7 @@ namespace Linh
                     if (std::holds_alternative<Map>(map_val))
                     {
                         auto map = std::get<Map>(map_val);
-                        Array arr = std::make_shared<std::vector<Value>>();
+                        Array arr = make_array();
                         for (const auto &kv : *map)
                         {
                             arr->push_back(kv.second);
@@ -1770,7 +2106,13 @@ namespace Linh
 #endif
                 if (!try_stack.empty())
                 {
-                    variables[2] = std::string(ex.what());
+                    // Get the error variable index from the try frame
+                    int error_var_index = 1; // Default to 1 for "error"
+                    if (!try_stack.empty() && try_stack.back().error_var == "error")
+                    {
+                        error_var_index = 1; // "error" variable is at index 1
+                    }
+                    variables[error_var_index] = std::string(ex.what());
                     ip = try_stack.back().catch_ip;
                     continue;
                 }
@@ -1781,6 +2123,15 @@ namespace Linh
                 }
             }
             ++ip;
+        }
+        
+        // Performance tracking end
+        auto end_time = std::chrono::high_resolution_clock::now();
+        execution_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        
+        // Optimize stack after execution
+        if (stack_optimization_enabled) {
+            optimize_stack();
         }
     }
 
