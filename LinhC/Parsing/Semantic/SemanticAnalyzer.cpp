@@ -19,6 +19,7 @@ namespace Linh
 {
     namespace Semantic
     {
+        extern Linh::BytecodeEmitter *g_main_emitter;
 
         // Thêm các mảng constexpr cho bit options
         constexpr std::array<int, 4> int_and_uint_bit_options = {8, 16, 32, 64};
@@ -676,7 +677,6 @@ namespace Linh
                 Linh::BytecodeEmitter mod_emitter;
                 mod_emitter.emit(mod_ast);
                 // Giả sử bạn có một con trỏ emitter chính hoặc một biến toàn cục để merge
-                extern Linh::BytecodeEmitter *g_main_emitter; // Khai báo ở Main.cpp
                 if (g_main_emitter)
                 {
                     auto &main_funcs = g_main_emitter->get_functions(); // non-const reference

@@ -76,7 +76,12 @@ void runFile(const std::string &filename)
     runSource(source, nullptr, nullptr, nullptr);
 }
 
-Linh::BytecodeEmitter *g_main_emitter = nullptr; // Thêm dòng này
+// Đặt biến này vào đúng namespace Linh::Semantic để tránh lỗi linker
+namespace Linh {
+namespace Semantic {
+    Linh::BytecodeEmitter *g_main_emitter = nullptr;
+}
+}
 
 void runSource(const std::string &source_code,
                Linh::Semantic::SemanticAnalyzer *sema_ptr,
@@ -99,7 +104,7 @@ void runSource(const std::string &source_code,
     }
 
     Linh::BytecodeEmitter emitter;
-    g_main_emitter = &emitter; // Đặt emitter chính trước khi semantic để import có thể merge
+    Linh::Semantic::g_main_emitter = &emitter; // Đặt emitter chính trước khi semantic để import có thể merge
     Linh::Semantic::SemanticAnalyzer sema;
     sema.analyze(ast);
     if (!sema.errors.empty())
@@ -114,7 +119,7 @@ void runSource(const std::string &source_code,
         return;
     }
     emitter.emit(ast);
-    g_main_emitter = nullptr; // Đặt lại sau khi xong
+    Linh::Semantic::g_main_emitter = nullptr; // Đặt lại sau khi xong
 
     // --- Debug: In ra danh sách function sau khi merge ---
 #ifdef _DEBUG
