@@ -56,7 +56,7 @@ namespace Linh
             }
             default:
             { // Bao gồm IDENTIFIER
-                std::cerr << "PARSER_WARN: Cannot determine zero value for base type '" << base_type->type_keyword_token.lexeme << "' at parse time. Defaulting to sol." << std::endl;
+                std::cerr << "WARNING [Line: 0, Col: 0] ParserWarning: Cannot determine zero value for base type '" << base_type->type_keyword_token.lexeme << "' at parse time. Defaulting to sol." << std::endl;
                 Token uninit_default_token(TokenType::SOL_KW, "sol", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
                 return std::unique_ptr<AST::Expr>(new AST::UninitLiteralExpr(uninit_default_token));
             }
@@ -90,7 +90,7 @@ namespace Linh
             {
                 return create_zero_value_initializer_for_type(union_type->types[0].get(), reference_token_for_pos);
             }
-            std::cerr << "PARSER_WARN: Empty union or first type is null when creating zero value. Defaulting to uninit." << std::endl;
+            std::cerr << "WARNING [Line: 0, Col: 0] ParserWarning: Empty union or first type is null when creating zero value. Defaulting to uninit." << std::endl;
         }
 
         Token uninit_fallback_token(TokenType::SOL_KW, "sol", std::monostate{}, reference_token_for_pos.line, reference_token_for_pos.column_start);
@@ -294,7 +294,6 @@ namespace Linh
 
 #ifdef _DEBUG
         std::cerr << "[DEBUG] Import statement - current token: " << peek().lexeme << " (type: " << static_cast<int>(peek().type) << ")" << std::endl;
-        std::cerr << "[DEBUG] Expected IDENTIFIER type: " << static_cast<int>(TokenType::IDENTIFIER) << std::endl;
 #endif
         // Nếu tiếp theo là IDENTIFIER, có thể là import name1, name2 from module; hoặc import module;
         if (check(TokenType::IDENTIFIER))
@@ -379,7 +378,6 @@ namespace Linh
                 module_name = Token(TokenType::IDENTIFIER, mod_name, std::monostate{}, mod_line, mod_col);
 #ifdef _DEBUG
                 std::cerr << "[DEBUG] Final module name: " << mod_name << std::endl;
-                std::cerr << "[DEBUG] Next token: " << peek().lexeme << " (type: " << static_cast<int>(peek().type) << ")" << std::endl;
 #endif
                 // Cho phép không có dấu chấm phẩy trong REPL hoặc khi là EOF hoặc khi tiếp theo là statement khác
                 if (check(TokenType::SEMICOLON))

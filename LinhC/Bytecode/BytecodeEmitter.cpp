@@ -396,7 +396,6 @@ namespace Linh
     {
 #ifdef _DEBUG
         std::cerr << "[DEBUG] visitAssignmentExpr: name=" << expr->name.lexeme << std::endl;
-        std::cerr << "[DEBUG] Assignment value type: " << typeid(*expr->value.get()).name() << std::endl;
 #endif
         // Evaluate value and store to variable
         if (expr->value)
@@ -1030,12 +1029,20 @@ namespace Linh
 #ifdef _DEBUG
         std::cerr << "[DEBUG] visitMemberExpr called!" << std::endl;
         std::cerr << "[DEBUG] MemberExpr: object=";
+#endif
         if (auto id = dynamic_cast<AST::IdentifierExpr *>(expr->object.get())) {
+#ifdef _DEBUG
             std::cerr << id->name.lexeme;
+#endif
         } else {
+#ifdef _DEBUG
             std::cerr << "(not identifier)";
+#endif
         }
+#ifdef _DEBUG
         std::cerr << ", property=" << expr->property_token.lexeme << std::endl;
+#endif
+#ifdef _DEBUG
         std::cerr << "[DEBUG] is_package_constant: " << (expr->is_package_constant ? "true" : "false") << std::endl;
 #endif
         

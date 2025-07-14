@@ -31,6 +31,7 @@
 #else
 #include <locale>
 #endif
+#include "config.hpp" // Thêm dòng này để lấy thông tin version
 
 void force_console_utf8()
 {
@@ -162,6 +163,14 @@ int main(int argc, char **argv)
     increase_performance();
     if (argc > 1)
     {
+        std::string arg1 = argv[1];
+        if (arg1 == "-v" || arg1 == "--version") {
+            std::cout << name << " (" << engine << ") version " << version << " [" << version_number << "]\n";
+            std::cout << "Copyright (c) 2025 Sao Tin Developer Team\n";
+            std::cout << "Author: " << author << "\n";
+            std::cout << "Website: " << web << "\n";
+            return 0;
+        }
         runFile(argv[1]);
     }
     else

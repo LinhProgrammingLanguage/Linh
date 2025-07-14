@@ -143,7 +143,7 @@ namespace Linh
     {
         if (stack.empty())
         {
-            std::cerr << "[Line 0 , Col 0] RuntimeError : VM stack underflow" << std::endl;
+            std::cerr << "ERROR [Line: 0, Col: 0] RuntimeError : VM stack underflow" << std::endl;
             return Value{}; // trả về sol
         }
         auto val = stack.back();
@@ -293,7 +293,9 @@ namespace Linh
 
     void LiVM::run(const BytecodeChunk &chunk)
     {
+#ifdef _DEBUG
         std::cerr << "[DEBUG] VM::run() started with " << chunk.size() << " instructions" << std::endl;
+#endif
         auto start_time = std::chrono::high_resolution_clock::now();
         
         ip = 0;
@@ -336,7 +338,9 @@ namespace Linh
         {
             const auto &instr = chunk[ip];
             
+#ifdef _DEBUG
             std::cerr << "[DEBUG] VM executing instruction " << ip << ": " << opcode_name(instr.opcode) << std::endl;
+#endif
             
             // Performance tracking
             instruction_count++;
@@ -344,7 +348,9 @@ namespace Linh
             
             // Try cached instruction first
             if (instruction_caching_enabled) {
+#ifdef _DEBUG
                 std::cerr << "[DEBUG] Trying cached instruction for ip=" << ip << std::endl;
+#endif
                 execute_cached_instruction(ip);
                 ip++;
                 continue;
@@ -371,7 +377,9 @@ namespace Linh
 #endif
                 switch (instr.opcode)
                 {
+#ifdef _DEBUG
                 std::cerr << "[DEBUG] Entering switch case for opcode: " << opcode_name(instr.opcode) << std::endl;
+#endif
                 case OpCode::PUSH_INT:
                     // If you want to support int128, check here
                     // For now, always push int64_t
@@ -432,7 +440,7 @@ namespace Linh
                     }
                     else
                     {
-                        std::cerr << "VM: AND/OR only supports bool" << std::endl;
+                        std::cerr << "ERROR [Line: 0, Col: 0] RuntimeError: AND/OR only supports bool" << std::endl;
                         push(false);
                     }
                     break;
@@ -568,47 +576,55 @@ namespace Linh
                 }
                 case OpCode::PRINT:
                 {
+#ifdef _DEBUG
                     std::cerr << "[DEBUG] PRINT opcode executed" << std::endl;
+#endif
                     if (stack.empty())
                     {
                         // Nếu stack rỗng, tự động push sol để không lỗi underflow
                         stack.push_back(std::monostate{});
                     }
                     auto val = pop();
+#ifdef _DEBUG
                     std::cerr << "[DEBUG] PRINT: about to print: " << Linh::to_str(val) << std::endl;
+#endif
                     LinhIO::linh_print(val);
                     break;
                 }
                 case OpCode::PRINT_MULTIPLE:
                 {
+#ifdef _DEBUG
                     std::cerr << "[DEBUG] PRINT_MULTIPLE in second switch case" << std::endl;
+#endif
                     int64_t count = std::get<int64_t>(instr.operand);
+#ifdef _DEBUG
                     std::cerr << "[DEBUG] PRINT_MULTIPLE: count=" << count << ", stack_size=" << stack.size() << std::endl;
+#endif
                     if (stack.size() < static_cast<size_t>(count))
                     {
-                        std::cerr << "[Line " << instr.line << " , Col " << instr.col << "] RuntimeError : VM stack underflow for PRINT_MULTIPLE" << std::endl;
+                        std::cerr << "ERROR [Line " << instr.line << ", Col " << instr.col << "] RuntimeError : VM stack underflow for PRINT_MULTIPLE" << std::endl;
                         break;
                     }
-                    
                     // Pop all values and convert them to strings
                     std::vector<std::string> strings;
                     for (int i = 0; i < count; i++) {
                         auto val = pop();
+#ifdef _DEBUG
                         std::cerr << "[DEBUG] PRINT_MULTIPLE: popped value " << i << ": " << Linh::to_str(val) << std::endl;
+#endif
                         strings.push_back(Linh::to_str(val));
                     }
-                    
                     // Reverse the strings to get correct order
                     std::reverse(strings.begin(), strings.end());
-                    
                     // Join strings with space separator (like Python's print)
                     std::string result;
                     for (size_t i = 0; i < strings.size(); i++) {
                         if (i > 0) result += " ";
                         result += strings[i];
                     }
-                    
+#ifdef _DEBUG
                     std::cerr << "[DEBUG] PRINT_MULTIPLE: final result: '" << result << "'" << std::endl;
+#endif
                     LinhIO::linh_print(Value(result));
                     break;
                 }
@@ -616,7 +632,7 @@ namespace Linh
                 {
                     if (stack.empty())
                     {
-                        std::cerr << "[Line " << instr.line << " , Col " << instr.col << "] RuntimeError : VM stack underflow" << std::endl;
+                        std::cerr << "ERROR [Line " << instr.line << ", Col " << instr.col << "] RuntimeError : VM stack underflow" << std::endl;
                         break;
                     }
                     auto val = pop();
@@ -639,7 +655,7 @@ namespace Linh
                 {
                     if (stack.empty())
                     {
-                        std::cerr << "[Line " << instr.line << " , Col " << instr.col << "] RuntimeError : VM stack underflow" << std::endl;
+                        std::cerr << "ERROR [Line " << instr.line << ", Col " << instr.col << "] RuntimeError : VM stack underflow" << std::endl;
                         break;
                     }
                     auto val = pop();
@@ -997,7 +1013,7 @@ namespace Linh
                                         }
                                         else
                                         {
-                                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: " << err_msg << std::endl;
+                                            std::cerr << "ERROR [Line: " << instr.line << ", Col: " << instr.col << "] VM: " << err_msg << std::endl;
                                             return;
                                         }
                                     }
@@ -1024,7 +1040,7 @@ namespace Linh
                                         }
                                         else
                                         {
-                                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: " << err_msg << std::endl;
+                                            std::cerr << "ERROR [Line: " << instr.line << ", Col: " << instr.col << "] VM: " << err_msg << std::endl;
                                             return;
                                         }
                                     }
@@ -1087,7 +1103,7 @@ namespace Linh
                                         }
                                         else
                                         {
-                                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: " << err_msg << std::endl;
+                                            std::cerr << "ERROR [Line: " << instr.line << ", Col: " << instr.col << "] VM: " << err_msg << std::endl;
                                             return;
                                         }
                                     }
@@ -1114,7 +1130,7 @@ namespace Linh
                                         }
                                         else
                                         {
-                                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: " << err_msg << std::endl;
+                                            std::cerr << "ERROR [Line: " << instr.line << ", Col: " << instr.col << "] VM: " << err_msg << std::endl;
                                             return;
                                         }
                                     }
@@ -1141,7 +1157,7 @@ namespace Linh
                                         }
                                         else
                                         {
-                                            std::cerr << "[Line " << instr.line << ", Col " << instr.col << "] VM: " << err_msg << std::endl;
+                                            std::cerr << "ERROR [Line: " << instr.line << ", Col: " << instr.col << "] VM: " << err_msg << std::endl;
                                             return;
                                         }
                                     }
@@ -1452,7 +1468,7 @@ namespace Linh
                             std::cerr << "[DEBUG] PRINT_MULTIPLE: count=" << count << ", stack_size=" << stack.size() << std::endl;
                             if (stack.size() < static_cast<size_t>(count))
                             {
-                                std::cerr << "[Line " << finstr.line << " , Col " << finstr.col << "] RuntimeError : VM stack underflow for PRINT_MULTIPLE" << std::endl;
+                                std::cerr << "ERROR [Line " << finstr.line << ", Col " << finstr.col << "] RuntimeError : VM stack underflow for PRINT_MULTIPLE" << std::endl;
                                 break;
                             }
                             

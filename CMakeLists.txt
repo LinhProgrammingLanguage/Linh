@@ -75,6 +75,7 @@ add_executable(LinhApp
     LinhC/Parsing/AST/ASTPrinter.cpp
     LinhC/Bytecode/BytecodeEmitter.cpp
     REPL.cpp
+    config.cpp # Thêm dòng này để link biến toàn cục
 )
 target_link_libraries(LinhApp PRIVATE
     LinhLexerLib

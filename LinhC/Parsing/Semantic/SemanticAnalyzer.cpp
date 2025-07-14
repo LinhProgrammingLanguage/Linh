@@ -8,6 +8,13 @@
 #include <chrono>
 #include <sstream>
 
+// Đặt helper vào đúng namespace và dùng Linh::ErrorStage::Semantic
+void push_semantic_error(std::vector<Linh::Error>& errors, int line, int col, const std::string& message) {
+    std::ostringstream oss;
+    oss << "ERROR [Line: " << line << ", Col: " << col << "] SemanticError: " << message;
+    errors.push_back({Linh::ErrorStage::Semantic, "SemanticError", oss.str(), line, col});
+}
+
 namespace Linh
 {
     namespace Semantic
@@ -253,18 +260,18 @@ namespace Linh
                 // Only error if explicit type is given (not sol) and value is sol
                 if (stmt->declared_type.has_value() && !type_is_sol && value_is_sol)
                 {
-                    errors.push_back({ErrorStage::Semantic, "SemanticError", "'var' with a specific type cannot be initialized with 'sol' value.", line, col});
+                    push_semantic_error(errors, line, col, "'var' with a specific type cannot be initialized with 'sol' value.");
                 }
             }
             // Kiểm tra trùng tên biến trong cùng scope
             if (!var_scopes.empty() && var_scopes.back().count(stmt->name.lexeme))
             {
-                errors.push_back({ErrorStage::Semantic, "SemanticError", "Variable '" + stmt->name.lexeme + "' redeclared in the same scope.", stmt->name.line, stmt->name.column_start});
+                push_semantic_error(errors, stmt->name.line, stmt->name.column_start, "Variable '" + stmt->name.lexeme + "' redeclared in the same scope.");
             }
             // Kiểm tra trùng tên biến với tên hàm toàn cục
             if (is_function_declared(stmt->name.lexeme))
             {
-                errors.push_back({ErrorStage::Semantic, "SemanticError", "Variable '" + stmt->name.lexeme + "' redeclared as a function name.", stmt->name.line, stmt->name.column_start});
+                push_semantic_error(errors, stmt->name.line, stmt->name.column_start, "Variable '" + stmt->name.lexeme + "' redeclared as a function name.");
             }
 
             // Kiểm tra tham số hàm không trùng tên với biến toàn cục (scope ngoài cùng)
@@ -356,7 +363,7 @@ namespace Linh
             {
                 if (type != "int" && type != "uint" && type != "float" && type != "map" && type != "array" && type != "str")
                 {
-                    errors.push_back({ErrorStage::Semantic, "SemanticError", "Type '" + type + "' does not support template specification (e.g. '<...>').", stmt->name.line, stmt->name.column_start});
+                    push_semantic_error(errors, stmt->name.line, stmt->name.column_start, "Type '" + type + "' does not support template specification (e.g. '<...>').");
                 }
             }
 
@@ -376,7 +383,7 @@ namespace Linh
                     }
                     if (!valid)
                     {
-                        errors.push_back({ErrorStage::Semantic, "SemanticError", "Invalid bit width for type '" + type + "<" + std::to_string(bit_width) + ">' (must be one of: 8, 16, 32, 64).", stmt->name.line, stmt->name.column_start});
+                        push_semantic_error(errors, stmt->name.line, stmt->name.column_start, "Invalid bit width for type '" + type + "<" + std::to_string(bit_width) + ">' (must be one of: 8, 16, 32, 64).");
                     }
                 }
             }
@@ -395,7 +402,7 @@ namespace Linh
                     }
                     if (!valid)
                     {
-                        errors.push_back({ErrorStage::Semantic, "SemanticError", "Invalid bit width for type 'float<" + std::to_string(bit_width) + ">' (must be one of: 32, 64).", stmt->name.line, stmt->name.column_start});
+                        push_semantic_error(errors, stmt->name.line, stmt->name.column_start, "Invalid bit width for type 'float<" + std::to_string(bit_width) + ">' (must be one of: 32, 64).");
                     }
                 }
             }
@@ -404,7 +411,7 @@ namespace Linh
             {
                 if (bit_width <= 0)
                 {
-                    errors.push_back({ErrorStage::Semantic, "SemanticError", "Type 'str<" + std::to_string(bit_width) + ">' index must be positive.", stmt->name.line, stmt->name.column_start});
+                    push_semantic_error(errors, stmt->name.line, stmt->name.column_start, "Type 'str<" + std::to_string(bit_width) + ">' index must be positive.");
                 }
             }
 
@@ -433,7 +440,7 @@ namespace Linh
             // Kiểm tra kiểu không phải số/map/array/str mà lại có template/bit_width
             if (!type.empty() && type != "int" && type != "uint" && type != "float" && type != "map" && type != "array" && type != "str" && has_template)
             {
-                errors.push_back({ErrorStage::Semantic, "SemanticError", "Type '" + type + "' does not support template specification (e.g. '<...>').", stmt->name.line, stmt->name.column_start});
+                push_semantic_error(errors, stmt->name.line, stmt->name.column_start, "Type '" + type + "' does not support template specification (e.g. '<...>').");
             }
 
             declare_var(stmt->name.lexeme, kind, type);
@@ -484,7 +491,7 @@ namespace Linh
             // Kiểm tra trùng tên hàm với biến toàn cục (scope ngoài cùng)
             if (!var_scopes.empty() && var_scopes.front().count(stmt->name.lexeme))
             {
-                errors.push_back({ErrorStage::Semantic, "SemanticError", "Function '" + stmt->name.lexeme + "' redeclared as a variable name.", stmt->name.line, stmt->name.column_start});
+                push_semantic_error(errors, stmt->name.line, stmt->name.column_start, "Function '" + stmt->name.lexeme + "' redeclared as a variable name.");
             }
             // Đăng ký tên hàm vào global_functions và lưu số lượng tham số
             declare_function(stmt->name.lexeme, stmt->params.size());
@@ -495,7 +502,7 @@ namespace Linh
             {
                 if (param_names.count(param.name.lexeme))
                 {
-                    errors.push_back({ErrorStage::Semantic, "SemanticError", "Parameter '" + param.name.lexeme + "' redeclared in parameter list.", param.name.line, param.name.column_start});
+                    push_semantic_error(errors, param.name.line, param.name.column_start, "Parameter '" + param.name.lexeme + "' redeclared in parameter list.");
                 }
                 param_names[param.name.lexeme] = true;
             }
@@ -525,7 +532,7 @@ namespace Linh
                 auto *base = dynamic_cast<AST::BaseTypeNode *>(stmt->return_type.value().get());
                 if (!base || (base->type_keyword_token.type != TokenType::VOID_KW && base->type_keyword_token.type != TokenType::SOL_KW))
                 {
-                    errors.push_back({ErrorStage::Semantic, "SemanticError", "Function '" + stmt->name.lexeme + "' must have a return statement.", stmt->name.line, stmt->name.column_start});
+                    push_semantic_error(errors, stmt->name.line, stmt->name.column_start, "Function '" + stmt->name.lexeme + "' must have a return statement.");
                 }
             }
             end_scope();
@@ -549,7 +556,7 @@ namespace Linh
             }
             if (!in_loop_or_switch)
             {
-                errors.push_back({ErrorStage::Semantic, "SemanticError", "'break' statement not inside a loop or switch.", stmt->getLine(), stmt->getCol()});
+                push_semantic_error(errors, stmt->getLine(), stmt->getCol(), "'break' statement not inside a loop or switch.");
             }
         }
         void SemanticAnalyzer::visitContinueStmt(AST::ContinueStmt *stmt)
@@ -566,7 +573,7 @@ namespace Linh
             }
             if (!in_loop_or_switch)
             {
-                errors.push_back({ErrorStage::Semantic, "SemanticError", "'continue' statement not inside a loop or switch.", stmt->getLine(), stmt->getCol()});
+                push_semantic_error(errors, stmt->getLine(), stmt->getCol(), "'continue' statement not inside a loop or switch.");
             }
         }
         void SemanticAnalyzer::visitSwitchStmt(AST::SwitchStmt *stmt)
@@ -646,7 +653,7 @@ namespace Linh
                 std::ifstream mod_file(module_path);
                 if (!mod_file)
                 {
-                    errors.push_back({ErrorStage::Semantic, "SemanticError", "Không thể mở file module: " + module_path, stmt->module_name.line, stmt->module_name.column_start});
+                    push_semantic_error(errors, stmt->module_name.line, stmt->module_name.column_start, "Cannot open module file: " + module_path);
                     return;
                 }
                 std::string line, mod_source;
@@ -659,7 +666,7 @@ namespace Linh
                 auto mod_ast = mod_parser.parse();
                 if (mod_parser.had_error())
                 {
-                    errors.push_back({ErrorStage::Semantic, "SemanticError", "Lỗi cú pháp trong module: " + module_path, stmt->module_name.line, stmt->module_name.column_start});
+                    push_semantic_error(errors, stmt->module_name.line, stmt->module_name.column_start, "Syntax error in module: " + module_path);
                     return;
                 }
                 // Phân tích semantic cho module (không reset state để giữ lại các hàm/biến)
@@ -738,7 +745,7 @@ namespace Linh
                     }
                     else
                     {
-                        errors.push_back({ErrorStage::Semantic, "SemanticError", "Package '" + base + "' does not have constant '" + member + "'.", expr->name.line, expr->name.column_start});
+                        push_semantic_error(errors, expr->name.line, expr->name.column_start, "Package '" + base + "' does not have constant '" + member + "'.");
                         return {};
                     }
                 }
@@ -757,7 +764,7 @@ namespace Linh
             // Kiểm tra biến đã khai báo chưa
             if (!is_var_declared(expr->name.lexeme))
             {
-                errors.push_back({ErrorStage::Semantic, "SemanticError", "Variable '" + expr->name.lexeme + "' used before declaration.", expr->name.line, expr->name.column_start});
+                push_semantic_error(errors, expr->name.line, expr->name.column_start, "Variable '" + expr->name.lexeme + "' used before declaration.");
             }
             return {};
         }
@@ -769,7 +776,7 @@ namespace Linh
                 // Không cho phép gán lại cho const
                 if (var_kinds.count(name) && var_kinds[name] == "const")
                 {
-                    errors.push_back({ErrorStage::Semantic, "SemanticError", "Cannot assign to '" + name + "' because it is declared as 'const'.", expr->name.line, expr->name.column_start});
+                    push_semantic_error(errors, expr->name.line, expr->name.column_start, "Cannot assign to '" + name + "' because it is declared as 'const'.");
                 }
                 // Không cho phép đổi kiểu cho vas
                 else if (var_kinds.count(name) && var_kinds[name] == "vas" && var_types.count(name))
@@ -818,12 +825,12 @@ namespace Linh
                     }
                     if (!new_type.empty() && !old_type.empty() && new_type != old_type)
                     {
-                        errors.push_back({ErrorStage::Semantic, "SemanticError", "Cannot change type of 'vas' variable '" + name + "' from '" + old_type + "' to '" + new_type + "'.", expr->name.line, expr->name.column_start});
+                        push_semantic_error(errors, expr->name.line, expr->name.column_start, "Cannot change type of 'vas' variable '" + name + "' from '" + old_type + "' to '" + new_type + "'.");
                     }
                     // Nếu không xác định được kiểu mới (biểu thức phức tạp), không cho phép đổi kiểu
                     if (new_type.empty() && expr->value)
                     {
-                        errors.push_back({ErrorStage::Semantic, "SemanticError", "Cannot assign non-literal or unknown type to 'vas' variable '" + name + "'.", expr->name.line, expr->name.column_start});
+                        push_semantic_error(errors, expr->name.line, expr->name.column_start, "Cannot assign non-literal or unknown type to 'vas' variable '" + name + "'.");
                     }
                 }
                 // Nếu là var thì cho phép đổi kiểu (cập nhật lại var_types)
@@ -914,8 +921,26 @@ namespace Linh
                         const std::string &tok_lex = lit->token.lexeme;
                         if (tok_lex.size() >= 2 && tok_lex.front() == '\'' && tok_lex.back() == '\'')
                         {
-                            errors.push_back({ErrorStage::Semantic, "SemanticError", "printf() argument must use double quotes (\\\"...\\\") not single quotes (\\'...\\').", lit->getLine(), lit->getCol()});
+                            push_semantic_error(errors, lit->getLine(), lit->getCol(), "printf() argument must use double quotes (\"...\") not single quotes (\'...\').");
                         }
+                    }
+                }
+                // --- GIỚI HẠN bool(x) chỉ cho phép 0, 1, 0.0, 1.0 ---
+                if (id->name.lexeme == "bool" && expr->arguments.size() == 1) {
+                    auto *arg0 = expr->arguments[0].get();
+                    bool valid = false;
+                    if (auto lit = dynamic_cast<AST::LiteralExpr *>(arg0)) {
+                        if (std::holds_alternative<int64_t>(lit->value)) {
+                            int64_t v = std::get<int64_t>(lit->value);
+                            valid = (v == 0 || v == 1);
+                        } else if (std::holds_alternative<double>(lit->value)) {
+                            double v = std::get<double>(lit->value);
+                            valid = (v == 0.0 || v == 1.0);
+                        }
+                    }
+                    // Nếu không phải literal 0/1/0.0/1.0 thì luôn báo lỗi
+                    if (!valid) {
+                        push_semantic_error(errors, expr->getLine(), expr->getCol(), "Only literal 0, 1, 0.0, 1.0 are allowed for bool() conversion.");
                     }
                 }
                 // Allow built-in conversion functions without declaration
@@ -925,7 +950,7 @@ namespace Linh
                 {
                     if (!is_function_declared(id->name.lexeme))
                     {
-                        errors.push_back({ErrorStage::Semantic, "SemanticError", "Function '" + id->name.lexeme + "' called but not declared.", id->name.line, id->name.column_start});
+                        push_semantic_error(errors, id->name.line, id->name.column_start, "Function '" + id->name.lexeme + "' called but not declared.");
                     }
                 }
                 // Không cần báo lỗi nếu tên này là biến (vì có thể shadow hoặc cho phép tên biến trùng tên hàm)
@@ -936,7 +961,7 @@ namespace Linh
                     size_t actual = expr->arguments.size();
                     if (expected != actual)
                     {
-                        errors.push_back({ErrorStage::Semantic, "SemanticError", "Function '" + id->name.lexeme + "' called with wrong number of arguments (expected " + std::to_string(expected) + ", got " + std::to_string(actual) + ").", id->name.line, id->name.column_start});
+                        push_semantic_error(errors, id->name.line, id->name.column_start, "Function '" + id->name.lexeme + "' called with wrong number of arguments (expected " + std::to_string(expected) + ", got " + std::to_string(actual) + ").");
                     }
                 }
             }

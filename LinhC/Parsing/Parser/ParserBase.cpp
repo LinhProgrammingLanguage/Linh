@@ -30,7 +30,7 @@ namespace Linh
 #endif
         if (tokens.empty() || tokens.back().type != TokenType::END_OF_FILE)
         {
-            std::cerr << "PARSER_INIT_WARN: Token list is invalid or missing EOF." << std::endl;
+            std::cerr << "WARNING [Line: 0, Col: 0] ParserWarning: Token list is invalid or missing EOF." << std::endl;
         }
         else if (!tokens.empty())
         {
@@ -147,7 +147,7 @@ namespace Linh
     // --- Error Handling and Synchronization ---
     Parser::ParseError Parser::error(const Token &token, const std::string &message)
     {
-        std::cerr << "[Line " << token.line << ", Col " << token.column_start << "] Syntax error";
+        std::cerr << "ERROR [Line: " << token.line << ", Col: " << token.column_start << "] ParserError: Syntax error";
         if (token.type == TokenType::END_OF_FILE)
         {
             std::cerr << " at end of file";

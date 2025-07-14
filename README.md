@@ -10,6 +10,15 @@ Tinh Linh (Linh) is a new programming language developed by the Sao Tin Develope
 - Supports `vas`, `const`, and `var` declarations.
 - Semantic analyzer and sample bytecode compiler.
 
+# Release Notes
+
+**Version 0.01 Released!**
+
+Today marks the release of version 0.01 of the Tinh Linh Programming Language.
+This release also celebrates the 6-month anniversary since the project began (from January 15, 2025 to July 15, 2025).
+
+Thank you for your support and feedback!
+
 ## Requirements
 
 - CMake >= 3.15
@@ -27,7 +36,7 @@ You can build the project manually with CMake, or use the provided build scripts
 Open a terminal in the project root and run:
 
 ```sh
-script\build\build.bat
+script\build\Release.bat
 ```
 
 This script will:
@@ -41,7 +50,7 @@ This script will:
 Open a terminal in the project root and run:
 
 ```sh
-bash script/build/build.sh
+bash script/build/Release.sh
 ```
 
 This script will:
@@ -86,6 +95,16 @@ Contributions, bug reports, and ideas are welcome! Please open an issue or pull 
 - Email: linhprogramminglanguage@gmail.com
 - Facebook: [Tinh Linh Lang](https://www.facebook.com/people/Tinh-Linh-Lang/61576609030665/)
 - GitHub: [https://github.com/LinhProgrammingLanguage/Linh](https://github.com/LinhProgrammingLanguage/Linh)
+
+---
+
+**NOTICE:**
+
+This project was originally licensed under the custom "Tinh Linh - MIT" license.
+
+As of July 14, 2025, the license has been officially changed to the Apache License, Version 2.0.
+
+All new contributions and distributions from this date forward are governed by the Apache License 2.0.
 
 ---
 

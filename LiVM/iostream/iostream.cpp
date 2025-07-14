@@ -6,8 +6,9 @@ namespace LinhIO
 
     void linh_print(const Linh::Value &val)
     {
-        // Prefer using \n instead of std::endl for better performance
+#ifdef _DEBUG
         std::cerr << "[DEBUG] linh_print called with: " << Linh::to_str(val) << std::endl;
+#endif
         std::cout << std::boolalpha << Linh::to_str(val) << "\n";
         std::cout.flush(); // Force flush to ensure output appears
     }
