@@ -293,6 +293,7 @@ namespace Linh
 
     void LiVM::run(const BytecodeChunk &chunk)
     {
+
 #ifdef _DEBUG
         std::cerr << "[DEBUG] VM::run() started with " << chunk.size() << " instructions" << std::endl;
 #endif

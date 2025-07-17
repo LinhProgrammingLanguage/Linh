@@ -10,7 +10,6 @@ namespace LinhIO
         std::cerr << "[DEBUG] linh_print called with: " << Linh::to_str(val) << std::endl;
 #endif
         std::cout << std::boolalpha << Linh::to_str(val) << "\n";
-        std::cout.flush(); // Force flush to ensure output appears
     }
 
     void linh_printf(const Linh::Value &val)

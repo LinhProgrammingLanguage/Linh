@@ -13,6 +13,36 @@ namespace Linh
 
     AST::TypeNodePtr Parser::parse_type()
     {
+        // Ưu tiên check array/map generic trước
+        if (check(TokenType::ARRAY_KW)) {
+            advance();
+            Token array_kw_token = previous();
+            if (check(TokenType::LT)) {
+                consume(TokenType::LT, "Thiếu '<' sau 'array' cho khai báo kiểu array.");
+                AST::TypeNodePtr element_type = parse_type();
+                consume(TokenType::GT, "Thiếu '>' sau kiểu phần tử array.");
+                Token dummy_rbracket(TokenType::RBRACKET, "]", std::monostate{}, array_kw_token.line, array_kw_token.column_start + static_cast<int>(array_kw_token.lexeme.length()));
+                return std::make_unique<AST::ArrayTypeNode>(array_kw_token, std::move(element_type), dummy_rbracket);
+            }
+            // Nếu không có <...>, coi như array<any>
+            Token dummy_rbracket(TokenType::RBRACKET, "]", std::monostate{}, array_kw_token.line, array_kw_token.column_start + static_cast<int>(array_kw_token.lexeme.length()));
+            return std::make_unique<AST::ArrayTypeNode>(array_kw_token, nullptr, dummy_rbracket);
+        }
+        if (check(TokenType::MAP_KW)) {
+            advance();
+            Token map_kw_token = previous();
+            if (check(TokenType::LT)) {
+                consume(TokenType::LT, "Thiếu '<' sau 'map' cho khai báo kiểu map.");
+                AST::TypeNodePtr key_type = parse_type();
+                consume(TokenType::COMMA, "Thiếu ',' giữa kiểu khóa và kiểu giá trị trong khai báo map.");
+                AST::TypeNodePtr value_type = parse_type();
+                consume(TokenType::GT, "Thiếu '>' để kết thúc khai báo kiểu map.");
+                return std::make_unique<AST::MapTypeNode>(map_kw_token, std::move(key_type), std::move(value_type));
+            }
+            // Nếu không có <...>, báo lỗi hoặc trả về map<any,any>
+            Token dummy_token(TokenType::IDENTIFIER, "any", std::monostate{}, map_kw_token.line, map_kw_token.column_start);
+            return std::make_unique<AST::MapTypeNode>(map_kw_token, std::make_unique<AST::BaseTypeNode>(dummy_token), std::make_unique<AST::BaseTypeNode>(dummy_token));
+        }
         // std::cout << "PARSER_TYPE: parse_type() called. Peek: " << debug_token_info(peek()) << std::endl;
         AST::TypeNodePtr type_node;
 
@@ -20,10 +50,6 @@ namespace Linh
         if (peek().type == TokenType::LT)
         { // Bắt đầu của Union Type: <Type1, Type2, ...>
             type_node = parse_union_type();
-        }
-        else if (peek().type == TokenType::MAP_KW)
-        { // Map Type: map<KeyType, ValueType>
-            type_node = parse_map_type();
         }
         else
         {

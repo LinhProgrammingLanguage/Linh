@@ -8,6 +8,48 @@
 #include <chrono>
 #include <sstream>
 
+// === Helper: kiểm tra subtype giữa hai type string (hỗ trợ array/map) ===
+static bool is_subtype_type_string(const std::string& sub, const std::string& super) {
+    if (sub == super) return true;
+    if (super == "any") return true;
+    // array<any> là supertype của mọi array
+    if (super == "array<any>" && sub.find("array<") == 0) return true;
+    // map<any,any> là supertype của mọi map
+    if (super == "map<any,any>" && sub.find("map<") == 0) return true;
+    // array<T>
+    if (sub.find("array<") == 0 && super.find("array<") == 0) {
+        auto get_inner = [](const std::string& s) -> std::string {
+            size_t l = s.find('<');
+            size_t r = s.rfind('>');
+            if (l == std::string::npos || r == std::string::npos || r <= l+1) return "any";
+            return s.substr(l+1, r-l-1);
+        };
+        return is_subtype_type_string(get_inner(sub), get_inner(super));
+    }
+    // map<K,V>
+    if (sub.find("map<") == 0 && super.find("map<") == 0) {
+        auto get_inner = [](const std::string& s) -> std::pair<std::string,std::string> {
+            size_t l = s.find('<');
+            size_t r = s.rfind('>');
+            if (l == std::string::npos || r == std::string::npos || r <= l+1) return {"any","any"};
+            std::string inside = s.substr(l+1, r-l-1);
+            size_t comma = inside.find(',');
+            if (comma == std::string::npos) return {inside, "any"};
+            std::string k = inside.substr(0, comma);
+            std::string v = inside.substr(comma+1);
+            // Trim
+            k.erase(0, k.find_first_not_of(" \t\n")); k.erase(k.find_last_not_of(" \t\n")+1);
+            v.erase(0, v.find_first_not_of(" \t\n")); v.erase(v.find_last_not_of(" \t\n")+1);
+            return {k, v};
+        };
+        auto [k1, v1] = get_inner(sub);
+        auto [k2, v2] = get_inner(super);
+        return is_subtype_type_string(k1, k2) && is_subtype_type_string(v1, v2);
+    }
+    // Có thể mở rộng cho union/option/tuple nếu cần
+    return false;
+}
+
 // Đặt helper vào đúng namespace và dùng Linh::ErrorStage::Semantic
 void push_semantic_error(std::vector<Linh::Error>& errors, int line, int col, const std::string& message) {
     std::ostringstream oss;
@@ -823,7 +865,7 @@ namespace Linh
                         }
                         // Có thể mở rộng cho các loại biểu thức khác nếu cần
                     }
-                    if (!new_type.empty() && !old_type.empty() && new_type != old_type)
+                    if (!new_type.empty() && !old_type.empty() && !is_subtype_type_string(new_type, old_type))
                     {
                         push_semantic_error(errors, expr->name.line, expr->name.column_start, "Cannot change type of 'vas' variable '" + name + "' from '" + old_type + "' to '" + new_type + "'.");
                     }

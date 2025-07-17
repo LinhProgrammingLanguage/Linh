@@ -161,9 +161,19 @@ namespace Linh
     
     void BytecodeEmitter::remove_dead_code(AST::StmtList& stmts) {
         if (!dead_code_elimination_enabled) return;
-        
-        // Remove unreachable statements
-        // This is a simplified implementation
+        AST::StmtList new_stmts;
+        bool unreachable = false;
+        for (auto& stmt : stmts) {
+            if (unreachable) continue;
+            new_stmts.push_back(std::move(stmt));
+            // Nếu là return, break, continue thì các statement sau đó là unreachable
+            if (dynamic_cast<AST::ReturnStmt*>(new_stmts.back().get()) ||
+                dynamic_cast<AST::BreakStmt*>(new_stmts.back().get()) ||
+                dynamic_cast<AST::ContinueStmt*>(new_stmts.back().get())) {
+                unreachable = true;
+            }
+        }
+        stmts = std::move(new_stmts);
     }
 
     void BytecodeEmitter::emit(const AST::StmtList &stmts)
@@ -535,41 +545,54 @@ namespace Linh
     }
     void BytecodeEmitter::visitWhileStmt(AST::WhileStmt *stmt)
     {
-        // while (cond) body
-        // [cond]
-        // JMP_IF_FALSE end
-        // [body]
-        // JMP cond
-        // end:
-
+        // Tối ưu hóa: Nếu điều kiện là hằng false, bỏ qua body
+        if (stmt->condition) {
+            auto literal = dynamic_cast<AST::LiteralExpr*>(stmt->condition.get());
+            if (literal) {
+                bool always_false = false;
+                if (std::holds_alternative<bool>(literal->value)) always_false = !std::get<bool>(literal->value);
+                else if (std::holds_alternative<int64_t>(literal->value)) always_false = std::get<int64_t>(literal->value) == 0;
+                else if (std::holds_alternative<double>(literal->value)) always_false = std::get<double>(literal->value) == 0.0;
+                else if (std::holds_alternative<std::string>(literal->value)) always_false = std::get<std::string>(literal->value).empty();
+                if (always_false) {
+                    // Không sinh code cho body, chỉ nhảy qua
+                    return;
+                }
+            }
+        }
+        // Bình thường
         size_t cond_pos = chunk.size();
         if (stmt->condition)
             stmt->condition->accept(this);
-
-        // Đặt chỗ cho JMP_IF_FALSE, sẽ sửa sau
         size_t jmp_if_false_pos = chunk.size();
         emit_instr(OpCode::JMP_IF_FALSE, int64_t(-1), stmt->getLine(), stmt->getCol()); // placeholder
-
         if (stmt->body)
             stmt->body->accept(this);
-
-        // Quay lại đầu vòng lặp
         emit_instr(OpCode::JMP, int64_t(cond_pos), stmt->getLine(), stmt->getCol());
-
-        // Sửa lại JMP_IF_FALSE để nhảy ra khỏi vòng lặp
         size_t end_pos = chunk.size();
         chunk[jmp_if_false_pos].operand = int64_t(end_pos);
     }
 
     void BytecodeEmitter::visitDoWhileStmt(AST::DoWhileStmt *stmt)
     {
-        // do { body } while (cond);
         size_t loop_start = chunk.size();
         if (stmt->body)
             stmt->body->accept(this);
-        if (stmt->condition)
-            stmt->condition->accept(this);
-        emit_instr(OpCode::JMP_IF_TRUE, int64_t(loop_start), stmt->getLine(), stmt->getCol());
+        // Tối ưu hóa: Nếu điều kiện là hằng false, không sinh JMP_IF_TRUE
+        if (stmt->condition) {
+            auto literal = dynamic_cast<AST::LiteralExpr*>(stmt->condition.get());
+            bool always_false = false;
+            if (literal) {
+                if (std::holds_alternative<bool>(literal->value)) always_false = !std::get<bool>(literal->value);
+                else if (std::holds_alternative<int64_t>(literal->value)) always_false = std::get<int64_t>(literal->value) == 0;
+                else if (std::holds_alternative<double>(literal->value)) always_false = std::get<double>(literal->value) == 0.0;
+                else if (std::holds_alternative<std::string>(literal->value)) always_false = std::get<std::string>(literal->value).empty();
+            }
+            if (!always_false)
+                stmt->condition->accept(this);
+            if (!always_false)
+                emit_instr(OpCode::JMP_IF_TRUE, int64_t(loop_start), stmt->getLine(), stmt->getCol());
+        }
     }
 
     void BytecodeEmitter::visitFunctionDeclStmt(AST::FunctionDeclStmt *) {}

@@ -44,15 +44,6 @@ void force_console_utf8()
 #endif
 }
 
-void increase_performance()
-{
-    // Turn off sync with stdio to increase input/output speed
-    std::ios_base::sync_with_stdio(false);
-
-    // Turn off automatic flush of cout when cin needs input
-    std::cin.tie(nullptr);
-}
-
 void runSource(const std::string &source_code,
                Linh::Semantic::SemanticAnalyzer *sema_ptr = nullptr,
                Linh::BytecodeEmitter *emitter_ptr = nullptr,
@@ -164,8 +155,9 @@ void runSource(const std::string &source_code)
 
 int main(int argc, char **argv)
 {
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(nullptr);
     force_console_utf8();
-    increase_performance();
     if (argc > 1)
     {
         std::string arg1 = argv[1];
