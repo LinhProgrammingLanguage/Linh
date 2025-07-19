@@ -21,6 +21,67 @@ namespace Linh
 
         friend void handle_loop_opcode(LiVM &vm, const Instruction &instr, const BytecodeChunk &chunk, size_t &ip);
         friend void math_binary_op(LiVM &vm, const Instruction &instr); // Thêm dòng này
+        friend void handle_PUSH_INT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_PUSH_FLOAT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_ADD(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_SUB(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_MUL(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_DIV(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_MOD(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_HASH(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_AMP(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_PIPE(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_CARET(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_LT_LT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_GT_GT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_EQ(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_NEQ(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_LT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_GT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_LTE(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_GTE(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_JMP(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_JMP_IF_FALSE(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_JMP_IF_TRUE(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_CALL(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_RET(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_HALT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_LOAD_VAR(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_STORE_VAR(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_AND(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_OR(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_NOT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_INPUT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_TYPEOF(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_PRINT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_NOP(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_PUSH_ARRAY(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_ARRAY_GET(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_ARRAY_SET(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_ARRAY_LEN(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_ARRAY_APPEND(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_ARRAY_REMOVE(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_ARRAY_CLEAR(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_ARRAY_CLONE(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_ARRAY_POP(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_PUSH_MAP(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_MAP_GET(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_MAP_SET(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_MAP_KEYS(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_MAP_VALUES(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_MAP_DELETE(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_MAP_CLEAR(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_TRY(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_END_TRY(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_PRINT_MULTIPLE(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_PRINTF(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_POP(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_SWAP(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_DUP(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_PUSH_UINT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_PUSH_STR(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_PUSH_BOOL(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_LOAD_PACKAGE_CONST(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
 
         // Optimization methods
         void enable_instruction_caching(bool enable = true) { instruction_caching_enabled = enable; }

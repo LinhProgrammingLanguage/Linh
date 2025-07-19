@@ -10,6 +10,7 @@
 #include <variant>
 #include "../LiPM/LiPM.hpp" // Thêm dòng này cho LiPM support
 #include <functional>
+#include <array>
 
 #ifdef _DEBUG
 // Helper to print a Value for debug
@@ -286,10 +287,203 @@ namespace Linh
             return "MAP_CLEAR";
         case OpCode::PRINT_MULTIPLE:
             return "PRINT_MULTIPLE";
+        case OpCode::PRINTF:
+            return "PRINTF";
         default:
             return "UNKNOWN";
         }
     }
+
+    // Forward declarations for opcode handlers
+    using OpHandler = void(*)(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+
+    // Handler functions for basic opcodes
+    static void handle_PUSH_INT(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        vm.push(std::get<int64_t>(instr.operand));
+    }
+    static void handle_PUSH_FLOAT(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        vm.push(std::get<double>(instr.operand));
+    }
+    static void handle_ADD(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        Linh::math_binary_op(vm, instr);
+    }
+    static void handle_SUB(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        Linh::math_binary_op(vm, instr);
+    }
+    static void handle_MUL(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        Linh::math_binary_op(vm, instr);
+    }
+    static void handle_DIV(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        Linh::math_binary_op(vm, instr);
+    }
+    static void handle_MOD(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        Linh::math_binary_op(vm, instr);
+    }
+    static void handle_HASH(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        Linh::math_binary_op(vm, instr);
+    }
+    static void handle_AMP(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        Linh::math_binary_op(vm, instr);
+    }
+    static void handle_PIPE(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        Linh::math_binary_op(vm, instr);
+    }
+    static void handle_CARET(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        Linh::math_binary_op(vm, instr);
+    }
+    static void handle_LT_LT(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        Linh::math_binary_op(vm, instr);
+    }
+    static void handle_GT_GT(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        Linh::math_binary_op(vm, instr);
+    }
+    static void handle_JMP(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t& ip) {
+        ip = std::get<int64_t>(instr.operand);
+    }
+    static void handle_JMP_IF_FALSE(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t& ip) {
+        auto cond = vm.pop();
+        bool cond_val = eval_condition(cond);
+        if (!cond_val)
+            ip = std::get<int64_t>(instr.operand);
+        else
+            ++ip;
+    }
+    static void handle_PRINT(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        if (vm.stack.empty()) vm.stack.push_back(std::monostate{});
+        auto val = vm.pop();
+        LinhIO::linh_print(val);
+    }
+    static void handle_NOP(LiVM&, const Instruction&, const BytecodeChunk&, size_t&) {}
+
+    static void handle_PRINT_MULTIPLE(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        int64_t count = std::get<int64_t>(instr.operand);
+        if (vm.stack.size() < static_cast<size_t>(count)) {
+            std::cerr << "ERROR [Line " << instr.line << ", Col " << instr.col << "] RuntimeError : VM stack underflow for PRINT_MULTIPLE" << std::endl;
+            return;
+        }
+        std::vector<std::string> strings;
+        for (int i = 0; i < count; i++) {
+            auto val = vm.pop();
+            strings.push_back(Linh::to_str(val));
+        }
+        std::reverse(strings.begin(), strings.end());
+        std::string result;
+        for (size_t i = 0; i < strings.size(); i++) {
+            if (i > 0) result += " ";
+            result += strings[i];
+        }
+        LinhIO::linh_print(Value(result));
+    }
+    static void handle_PRINTF(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        if (vm.stack.empty()) {
+            std::cerr << "ERROR [Line " << instr.line << ", Col " << instr.col << "] RuntimeError : VM stack underflow" << std::endl;
+            return;
+        }
+        auto val = vm.pop();
+        LinhIO::linh_printf(val);
+    }
+
+    static void handle_POP(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        vm.pop();
+    }
+    static void handle_SWAP(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        if (vm.stack.size() < 2) {
+            std::cerr << "VM stack underflow for SWAP" << std::endl;
+            return;
+        }
+        std::swap(vm.stack[vm.stack.size() - 1], vm.stack[vm.stack.size() - 2]);
+    }
+    static void handle_DUP(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        if (vm.stack.empty()) {
+            std::cerr << "VM stack underflow for DUP" << std::endl;
+            return;
+        }
+        vm.stack.push_back(vm.stack.back());
+    }
+    static void handle_PUSH_UINT(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        vm.push(std::get<uint64_t>(instr.operand));
+    }
+    static void handle_PUSH_STR(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        vm.push(std::get<std::string>(instr.operand));
+    }
+    static void handle_PUSH_BOOL(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        vm.push(std::get<bool>(instr.operand));
+    }
+
+    static void handle_LOAD_PACKAGE_CONST(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        // Giả sử operand là tên hằng số package (string)
+        std::string const_name = std::get<std::string>(instr.operand);
+        // Nếu bạn có cơ chế lưu package constants, hãy lấy giá trị ở đây
+        // Ở đây chỉ demo: push tên hằng số lên stack
+        vm.push(const_name);
+    }
+
+    // Jump table for opcodes (partial, expand as needed)
+    static const std::array<OpHandler, 256> opcode_jump_table = []{
+        std::array<OpHandler, 256> table{};
+        table[static_cast<size_t>(OpCode::NOP)] = handle_NOP;
+        table[static_cast<size_t>(OpCode::PUSH_INT)] = handle_PUSH_INT;
+        table[static_cast<size_t>(OpCode::PUSH_FLOAT)] = handle_PUSH_FLOAT;
+        table[static_cast<size_t>(OpCode::ADD)] = handle_ADD;
+        table[static_cast<size_t>(OpCode::SUB)] = handle_SUB;
+        table[static_cast<size_t>(OpCode::MUL)] = handle_MUL;
+        table[static_cast<size_t>(OpCode::DIV)] = handle_DIV;
+        table[static_cast<size_t>(OpCode::MOD)] = handle_MOD;
+        table[static_cast<size_t>(OpCode::HASH)] = handle_HASH;
+        table[static_cast<size_t>(OpCode::AMP)] = handle_AMP;
+        table[static_cast<size_t>(OpCode::PIPE)] = handle_PIPE;
+        table[static_cast<size_t>(OpCode::CARET)] = handle_CARET;
+        table[static_cast<size_t>(OpCode::LT_LT)] = handle_LT_LT;
+        table[static_cast<size_t>(OpCode::GT_GT)] = handle_GT_GT;
+        table[static_cast<size_t>(OpCode::EQ)] = handle_EQ;
+        table[static_cast<size_t>(OpCode::NEQ)] = handle_NEQ;
+        table[static_cast<size_t>(OpCode::LT)] = handle_LT;
+        table[static_cast<size_t>(OpCode::GT)] = handle_GT;
+        table[static_cast<size_t>(OpCode::LTE)] = handle_LTE;
+        table[static_cast<size_t>(OpCode::GTE)] = handle_GTE;
+        table[static_cast<size_t>(OpCode::JMP)] = handle_JMP;
+        table[static_cast<size_t>(OpCode::JMP_IF_FALSE)] = handle_JMP_IF_FALSE;
+        table[static_cast<size_t>(OpCode::JMP_IF_TRUE)] = handle_JMP_IF_TRUE;
+        table[static_cast<size_t>(OpCode::CALL)] = handle_CALL;
+        table[static_cast<size_t>(OpCode::RET)] = handle_RET;
+        table[static_cast<size_t>(OpCode::HALT)] = handle_HALT;
+        table[static_cast<size_t>(OpCode::LOAD_VAR)] = handle_LOAD_VAR;
+        table[static_cast<size_t>(OpCode::STORE_VAR)] = handle_STORE_VAR;
+        table[static_cast<size_t>(OpCode::AND)] = handle_AND;
+        table[static_cast<size_t>(OpCode::OR)] = handle_OR;
+        table[static_cast<size_t>(OpCode::NOT)] = handle_NOT;
+        table[static_cast<size_t>(OpCode::INPUT)] = handle_INPUT;
+        table[static_cast<size_t>(OpCode::TYPEOF)] = handle_TYPEOF;
+        table[static_cast<size_t>(OpCode::PRINT)] = handle_PRINT;
+        table[static_cast<size_t>(OpCode::PUSH_ARRAY)] = handle_PUSH_ARRAY;
+        table[static_cast<size_t>(OpCode::ARRAY_GET)] = handle_ARRAY_GET;
+        table[static_cast<size_t>(OpCode::ARRAY_SET)] = handle_ARRAY_SET;
+        table[static_cast<size_t>(OpCode::ARRAY_LEN)] = handle_ARRAY_LEN;
+        table[static_cast<size_t>(OpCode::ARRAY_APPEND)] = handle_ARRAY_APPEND;
+        table[static_cast<size_t>(OpCode::ARRAY_REMOVE)] = handle_ARRAY_REMOVE;
+        table[static_cast<size_t>(OpCode::ARRAY_CLEAR)] = handle_ARRAY_CLEAR;
+        table[static_cast<size_t>(OpCode::ARRAY_CLONE)] = handle_ARRAY_CLONE;
+        table[static_cast<size_t>(OpCode::ARRAY_POP)] = handle_ARRAY_POP;
+        table[static_cast<size_t>(OpCode::PUSH_MAP)] = handle_PUSH_MAP;
+        table[static_cast<size_t>(OpCode::MAP_GET)] = handle_MAP_GET;
+        table[static_cast<size_t>(OpCode::MAP_SET)] = handle_MAP_SET;
+        table[static_cast<size_t>(OpCode::MAP_KEYS)] = handle_MAP_KEYS;
+        table[static_cast<size_t>(OpCode::MAP_VALUES)] = handle_MAP_VALUES;
+        table[static_cast<size_t>(OpCode::MAP_DELETE)] = handle_MAP_DELETE;
+        table[static_cast<size_t>(OpCode::MAP_CLEAR)] = handle_MAP_CLEAR;
+        table[static_cast<size_t>(OpCode::TRY)] = handle_TRY;
+        table[static_cast<size_t>(OpCode::END_TRY)] = handle_END_TRY;
+        table[static_cast<size_t>(OpCode::PRINT_MULTIPLE)] = handle_PRINT_MULTIPLE;
+        table[static_cast<size_t>(OpCode::PRINTF)] = handle_PRINTF;
+        table[static_cast<size_t>(OpCode::POP)] = handle_POP;
+        table[static_cast<size_t>(OpCode::SWAP)] = handle_SWAP;
+        table[static_cast<size_t>(OpCode::DUP)] = handle_DUP;
+        table[static_cast<size_t>(OpCode::PUSH_UINT)] = handle_PUSH_UINT;
+        table[static_cast<size_t>(OpCode::PUSH_STR)] = handle_PUSH_STR;
+        table[static_cast<size_t>(OpCode::PUSH_BOOL)] = handle_PUSH_BOOL;
+        table[static_cast<size_t>(OpCode::LOAD_PACKAGE_CONST)] = handle_LOAD_PACKAGE_CONST;
+        return table;
+    }();
 
     void LiVM::run(const BytecodeChunk &chunk)
     {
@@ -2170,6 +2364,345 @@ namespace Linh
             std::cout << "bool" << std::endl;
         else
             std::cout << "unknown" << std::endl;
+    }
+
+    static void handle_GTE(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        auto b = vm.pop();
+        auto a = vm.pop();
+        bool result = false;
+        // If either is string, compare as string
+        if (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b)) {
+            std::string sa = std::holds_alternative<std::string>(a) ? std::get<std::string>(a) : Linh::to_str(a);
+            std::string sb = std::holds_alternative<std::string>(b) ? std::get<std::string>(b) : Linh::to_str(b);
+            result = (sa >= sb);
+        }
+        // If both are bool
+        else if (std::holds_alternative<bool>(a) && std::holds_alternative<bool>(b)) {
+            bool av = std::get<bool>(a);
+            bool bv = std::get<bool>(b);
+            result = (av || !bv);
+        }
+        // If both are numbers (int/double/uint)
+        else if ((std::holds_alternative<int64_t>(a) || std::holds_alternative<double>(a) || std::holds_alternative<uint64_t>(a)) &&
+                 (std::holds_alternative<int64_t>(b) || std::holds_alternative<double>(b) || std::holds_alternative<uint64_t>(b))) {
+            double av = std::holds_alternative<int64_t>(a) ? static_cast<double>(std::get<int64_t>(a)) :
+                        (std::holds_alternative<uint64_t>(a) ? static_cast<double>(std::get<uint64_t>(a)) : std::get<double>(a));
+            double bv = std::holds_alternative<int64_t>(b) ? static_cast<double>(std::get<int64_t>(b)) :
+                        (std::holds_alternative<uint64_t>(b) ? static_cast<double>(std::get<uint64_t>(b)) : std::get<double>(b));
+            result = (av >= bv);
+        }
+        // Fallback: compare as string
+        else {
+            std::string sa = Linh::to_str(a);
+            std::string sb = Linh::to_str(b);
+            result = (sa >= sb);
+        }
+        vm.push(result);
+    }
+    static void handle_JMP_IF_TRUE(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t& ip) {
+        auto cond = vm.pop();
+        bool cond_val = eval_condition(cond);
+        if (cond_val)
+            ip = std::get<int64_t>(instr.operand);
+        else
+            ++ip;
+    }
+    static void handle_CALL(LiVM& vm, const Instruction& instr, const BytecodeChunk& chunk, size_t& ip) {
+        std::string func_name = std::get<std::string>(instr.operand);
+        auto it = vm.functions.find(func_name);
+        if (it != vm.functions.end()) {
+            // Push return address
+            vm.call_stack.push_back({ip + 1, {}});
+            // Set up new frame
+            ip = 0;
+            // Note: This is simplified - in real implementation you'd need to handle parameters
+        } else {
+            std::cerr << "VM: Unknown function '" << func_name << "'" << std::endl;
+            ++ip;
+        }
+    }
+    static void handle_RET(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t& ip) {
+        if (!vm.call_stack.empty()) {
+            auto frame = vm.call_stack.back();
+            vm.call_stack.pop_back();
+            ip = frame.return_ip;
+        } else {
+            // No call stack, exit
+            ip = SIZE_MAX; // Signal to exit
+        }
+    }
+    static void handle_HALT(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t& ip) {
+        ip = SIZE_MAX; // Signal to exit
+    }
+    static void handle_LOAD_VAR(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        int idx = std::get<int64_t>(instr.operand);
+        if (vm.variables.count(idx))
+            vm.push(vm.variables[idx]);
+        else {
+            // Nếu tên biến là error.message và error tồn tại, trả về error
+            if (idx == 3 && vm.variables.count(2)) {
+                vm.push(vm.variables[2]);
+            } else {
+                std::cerr << "VM: LOAD_VAR unknown variable index " << idx << std::endl;
+                vm.push(int64_t(0));
+            }
+        }
+    }
+    static void handle_STORE_VAR(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        int idx = std::get<int64_t>(instr.operand);
+        if (vm.stack.empty()) {
+            vm.stack.push_back(std::monostate{});
+        }
+        vm.variables[idx] = vm.pop();
+    }
+    static void handle_AND(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        auto b = vm.pop();
+        auto a = vm.pop();
+        if (std::holds_alternative<bool>(a) && std::holds_alternative<bool>(b)) {
+            bool av = std::get<bool>(a);
+            bool bv = std::get<bool>(b);
+            vm.push(av && bv);
+        } else {
+            std::cerr << "ERROR [Line: 0, Col: 0] RuntimeError: AND only supports bool" << std::endl;
+            vm.push(false);
+        }
+    }
+    static void handle_OR(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        auto b = vm.pop();
+        auto a = vm.pop();
+        if (std::holds_alternative<bool>(a) && std::holds_alternative<bool>(b)) {
+            bool av = std::get<bool>(a);
+            bool bv = std::get<bool>(b);
+            vm.push(av || bv);
+        } else {
+            std::cerr << "ERROR [Line: 0, Col: 0] RuntimeError: OR only supports bool" << std::endl;
+            vm.push(false);
+        }
+    }
+    static void handle_NOT(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        auto a = vm.pop();
+        if (std::holds_alternative<bool>(a))
+            vm.push(!std::get<bool>(a));
+        else if (std::holds_alternative<int64_t>(a))
+            vm.push(~std::get<int64_t>(a)); // bitwise NOT
+        else {
+            std::cerr << "VM: NOT only supports bool or int" << std::endl;
+            vm.push(false);
+        }
+    }
+    static void handle_INPUT(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        auto prompt = vm.pop();
+        std::string prompt_str;
+        if (std::holds_alternative<std::string>(prompt))
+            prompt_str = std::get<std::string>(prompt);
+        else
+            prompt_str = "";
+        auto input_val = LinhIO::linh_input(prompt_str);
+        vm.push(input_val);
+    }
+    static void handle_TYPEOF(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        if (vm.stack.empty()) {
+            std::cerr << "ERROR [Line " << instr.line << ", Col " << instr.col << "] RuntimeError : VM stack underflow" << std::endl;
+        } else {
+            auto val = vm.pop();
+            std::string type_str = "sol";
+            if (std::holds_alternative<int64_t>(val))
+                type_str = "int";
+            else if (std::holds_alternative<uint64_t>(val))
+                type_str = "uint";
+            else if (std::holds_alternative<double>(val))
+                type_str = "float";
+            else if (std::holds_alternative<std::string>(val))
+                type_str = "string";
+            else if (std::holds_alternative<bool>(val))
+                type_str = "bool";
+            else if (std::holds_alternative<Array>(val))
+                type_str = "array";
+            else if (std::holds_alternative<Map>(val))
+                type_str = "map";
+            vm.push(type_str);
+        }
+    }
+    static void handle_PUSH_ARRAY(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        vm.push(make_array());
+    }
+    static void handle_ARRAY_GET(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto idx = vm.pop();
+        auto arr_val = vm.pop();
+        if (std::holds_alternative<Array>(arr_val)) {
+            auto arr = std::get<Array>(arr_val);
+            int64_t i = Linh::to_int(idx);
+            if (i >= 0 && i < (int64_t)arr->size())
+                vm.push((*arr)[i]);
+            else
+                vm.push(Value{}); // sol
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_ARRAY_SET(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto idx = vm.pop();
+        auto arr_val = vm.pop();
+        auto value = vm.pop();
+        if (std::holds_alternative<Array>(arr_val)) {
+            auto arr = std::get<Array>(arr_val);
+            int64_t i = Linh::to_int(idx);
+            if (i >= 0 && i < (int64_t)arr->size())
+                (*arr)[i] = value;
+            vm.push(arr);
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_ARRAY_LEN(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto arr_val = vm.pop();
+        if (std::holds_alternative<Array>(arr_val)) {
+            auto arr = std::get<Array>(arr_val);
+            vm.push((int64_t)arr->size());
+        } else {
+            vm.push(int64_t(0));
+        }
+    }
+    static void handle_ARRAY_APPEND(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto val = vm.pop();
+        auto arr_val = vm.pop();
+        if (std::holds_alternative<Array>(arr_val)) {
+            auto arr = std::get<Array>(arr_val);
+            arr->push_back(val);
+            vm.push(arr);
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_ARRAY_REMOVE(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto idx = vm.pop();
+        auto arr_val = vm.pop();
+        if (std::holds_alternative<Array>(arr_val)) {
+            auto arr = std::get<Array>(arr_val);
+            int64_t i = Linh::to_int(idx);
+            if (i >= 0 && i < (int64_t)arr->size())
+                arr->erase(arr->begin() + i);
+            vm.push(arr);
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_ARRAY_CLEAR(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto arr_val = vm.pop();
+        if (std::holds_alternative<Array>(arr_val)) {
+            auto arr = std::get<Array>(arr_val);
+            arr->clear();
+            vm.push(arr);
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_ARRAY_CLONE(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto arr_val = vm.pop();
+        if (std::holds_alternative<Array>(arr_val)) {
+            auto arr = std::get<Array>(arr_val);
+            auto new_arr = make_array();
+            *new_arr = *arr;
+            vm.push(new_arr);
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_ARRAY_POP(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto arr_val = vm.pop();
+        if (std::holds_alternative<Array>(arr_val)) {
+            auto arr = std::get<Array>(arr_val);
+            if (!arr->empty())
+                arr->pop_back();
+            vm.push(arr);
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_PUSH_MAP(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        vm.push(make_map());
+    }
+    static void handle_MAP_GET(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto idx = vm.pop();
+        auto map_val = vm.pop();
+        if (std::holds_alternative<Map>(map_val)) {
+            auto map = std::get<Map>(map_val);
+            std::string key = Linh::to_str(idx);
+            auto it = map->find(key);
+            if (it != map->end())
+                vm.push(it->second);
+            else
+                vm.push(Value{}); // sol
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_MAP_SET(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto idx = vm.pop();
+        auto map_val = vm.pop();
+        auto value = vm.pop();
+        if (std::holds_alternative<Map>(map_val)) {
+            auto map = std::get<Map>(map_val);
+            std::string key = Linh::to_str(idx);
+            (*map)[key] = value;
+            vm.push(map);
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_MAP_KEYS(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto map_val = vm.pop();
+        if (std::holds_alternative<Map>(map_val)) {
+            auto map = std::get<Map>(map_val);
+            auto arr = make_array();
+            for (const auto& kv : *map) {
+                arr->push_back(kv.first);
+            }
+            vm.push(arr);
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_MAP_VALUES(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto map_val = vm.pop();
+        if (std::holds_alternative<Map>(map_val)) {
+            auto map = std::get<Map>(map_val);
+            auto arr = make_array();
+            for (const auto& kv : *map) {
+                arr->push_back(kv.second);
+            }
+            vm.push(arr);
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_MAP_DELETE(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto idx = vm.pop();
+        auto map_val = vm.pop();
+        if (std::holds_alternative<Map>(map_val)) {
+            auto map = std::get<Map>(map_val);
+            std::string key = Linh::to_str(idx);
+            map->erase(key);
+            vm.push(map);
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_MAP_CLEAR(LiVM& vm, const Instruction&, const BytecodeChunk&, size_t&) {
+        auto map_val = vm.pop();
+        if (std::holds_alternative<Map>(map_val)) {
+            auto map = std::get<Map>(map_val);
+            map->clear();
+            vm.push(map);
+        } else {
+            vm.push(Value{}); // sol
+        }
+    }
+    static void handle_TRY(LiVM&, const Instruction&, const BytecodeChunk&, size_t&) {
+        /* Xử lý TRY nếu cần */
+    }
+    static void handle_END_TRY(LiVM&, const Instruction&, const BytecodeChunk&, size_t&) {
+        /* Xử lý END_TRY nếu cần */
     }
 
 } // namespace Linh

@@ -4,7 +4,7 @@
 namespace Linh
 {
     // Hàm kiểm tra điều kiện cho JMP_IF_TRUE/FALSE
-    static inline bool eval_condition(const Value& cond) {
+    inline bool eval_condition(const Value& cond) {
         return std::visit([](auto&& arg) -> bool {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, bool>)
