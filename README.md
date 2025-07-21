@@ -110,6 +110,6 @@ All new contributions and distributions from this date forward are governed by t
 
 **Third-party libraries used:**
 
-- [fmt](https://github.com/fmtlib/fmt) (MIT License)
+- [fmt](https://github.com/fmtlib/fmt) - [(MIT License)](https://github.com/fmtlib/fmt/blob/master/LICENSE)
 
 © 2025 Sao Tin Developer Team. See [LICENSE](LICENSE.md) for license details.
