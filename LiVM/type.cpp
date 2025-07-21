@@ -1,9 +1,5 @@
 #include "type.hpp"
-#include <iostream>
-#include <sstream>
-#include <stdexcept>
-#include <limits>
-#include <iomanip>
+#include <fmt/core.h>
 
 namespace Linh
 {
@@ -15,10 +11,8 @@ namespace Linh
     // Hàm riêng để format số thực theo quy tắc của Linh
     std::string format_float_linh(double value)
     {
-        // Bước 1: Chuyển thành string với độ chính xác cao
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(17) << value;
-        std::string str = oss.str();
+        // Bước 1: Chuyển thành string với độ chính xác cao bằng fmt
+        std::string str = fmt::format("{:.17f}", value);
         
         // Bước 2: Tìm vị trí dấu chấm thập phân
         size_t dot_pos = str.find('.');
@@ -117,9 +111,7 @@ namespace Linh
             return std::to_string(std::get<int64_t>(val));
         if (std::holds_alternative<uint64_t>(val))
         {
-            std::ostringstream oss;
-            oss << std::get<uint64_t>(val);
-            return oss.str();
+            return fmt::to_string(std::get<uint64_t>(val));
         }
         if (std::holds_alternative<double>(val))
         {
@@ -130,31 +122,29 @@ namespace Linh
         if (std::holds_alternative<Array>(val))
         {
             const auto &arr = std::get<Array>(val);
-            std::ostringstream oss;
-            oss << "[";
+            std::string result = "[";
             for (size_t i = 0; i < arr->size(); ++i)
             {
-                oss << to_str((*arr)[i]);
+                result += to_str((*arr)[i]);
                 if (i + 1 < arr->size())
-                    oss << ", ";
+                    result += ", ";
             }
-            oss << "]";
-            return oss.str();
+            result += "]";
+            return result;
         }
         if (std::holds_alternative<Map>(val))
         {
             const auto &map = std::get<Map>(val);
-            std::ostringstream oss;
-            oss << "{";
+            std::string result = "{";
             size_t count = 0;
             for (const auto &kv : *map)
             {
-                oss << kv.first << ": " << to_str(kv.second);
+                result += fmt::format("{}: {}", kv.first, to_str(kv.second));
                 if (++count < map->size())
-                    oss << ", ";
+                    result += ", ";
             }
-            oss << "}";
-            return oss.str();
+            result += "}";
+            return result;
         }
         return "<unknown>";
     }

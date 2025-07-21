@@ -4,13 +4,13 @@
 #include "Loop.hpp"
 #include <cmath>
 #include "Math/Math.hpp" // Thêm dòng này
-#include <sstream>       // Thêm dòng này cho std::ostringstream
 #include <iomanip>
 #include "type.hpp"
 #include <variant>
 #include "../LiPM/LiPM.hpp" // Thêm dòng này cho LiPM support
 #include <functional>
 #include <array>
+#include <fmt/format.h>
 
 #ifdef _DEBUG
 // Helper to print a Value for debug
@@ -1917,25 +1917,25 @@ namespace Linh
                     }
                     else
                     {
-                        std::ostringstream oss;
                         const Value &val = stack.back();
+                        std::string addr_str;
                         // For Array/Map: use the address of the underlying object
                         if (std::holds_alternative<Array>(val))
                         {
                             const auto &arr = std::get<Array>(val);
-                            oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(arr.get());
+                            addr_str = fmt::format("0x{:x}", reinterpret_cast<uintptr_t>(arr.get()));
                         }
                         else if (std::holds_alternative<Map>(val))
                         {
                             const auto &map = std::get<Map>(val);
-                            oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(map.get());
+                            addr_str = fmt::format("0x{:x}", reinterpret_cast<uintptr_t>(map.get()));
                         }
                         else
                         {
                             // For primitives: use the address of the value in the stack
-                            oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&val);
+                            addr_str = fmt::format("0x{:x}", reinterpret_cast<uintptr_t>(&val));
                         }
-                        push(oss.str());
+                        push(addr_str);
                     }
                     break;
                 }

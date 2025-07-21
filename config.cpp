@@ -2,8 +2,8 @@
 
 std::string name = "Linh";
 std::string engine = "Linh.cpp";
-std::string version = "Optimization 0.012";
-std::string version_number = "opz 0.012";
+std::string version = "Optimization 0.013";
+std::string version_number = "opz 0.013";
 std::string language = "C++";
 
 std::string author = "Jkar / Sao Tin Developer Team";

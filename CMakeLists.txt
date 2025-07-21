@@ -6,6 +6,26 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# --- CPM.cmake (package manager) ---
+include(FETCHCONTENT)
+if(NOT (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/CPM.cmake"))
+    message(STATUS "Downloading CPM.cmake...")
+    file(DOWNLOAD https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/CPM.cmake
+        ${CMAKE_CURRENT_SOURCE_DIR}/CPM.cmake
+        EXPECTED_HASH ANY)
+endif()
+include(${CMAKE_CURRENT_SOURCE_DIR}/CPM.cmake)
+
+# --- Thêm thư viện fmt bằng CPM ---
+CPMAddPackage(
+    NAME fmt
+    GITHUB_REPOSITORY fmtlib/fmt
+    GIT_TAG 11.2.0
+)
+if(fmt_ADDED)
+    message(STATUS "fmt library added via CPM")
+endif()
+
 # --- Định nghĩa thư viện Lexer ---
 add_library(LinhLexerLib STATIC
     LinhC/Parsing/Lexer/Lexer.cpp
@@ -55,6 +75,7 @@ add_library(LiVMLib STATIC
 target_include_directories(LiVMLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+target_link_libraries(LiVMLib PUBLIC fmt::fmt)
 
 # --- LiPM Package Manager ---
 add_library(LiPMLib STATIC
@@ -84,6 +105,7 @@ target_link_libraries(LinhApp PRIVATE
     LinhSemanticLib
     LiVMLib
     LiPMLib
+    fmt::fmt # Link fmt vào executable
 )
 
 if(WIN32)
