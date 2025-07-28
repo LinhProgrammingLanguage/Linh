@@ -464,6 +464,10 @@ namespace Linh
             return std::unique_ptr<AST::Expr>(new AST::GroupingExpr(std::move(expr_in_group)));
         }
 
+        if (match({TokenType::FUNC_KW})) {
+            return parse_function_expression();
+        }
+
         // Thêm hỗ trợ cho array literal `[]`
         if (peek().type == TokenType::LBRACKET)
         {
@@ -579,6 +583,37 @@ namespace Linh
             }
         }
         return std::make_unique<AST::InterpolatedStringExpr>(std::move(parts));
+    }
+
+    AST::ExprPtr Parser::parse_function_expression() {
+        Token func_kw = previous();
+        // Parse parameter list
+        consume(TokenType::LPAREN, "Thiếu '(' sau 'func' cho anonymous function.");
+        std::vector<AST::FuncParamNode> params;
+        if (!check(TokenType::RPAREN)) {
+            do {
+                bool is_static = false;
+                std::optional<AST::TypeNodePtr> param_type = std::nullopt;
+                Token param_name;
+                if (match({TokenType::VAS_KW})) is_static = true;
+                if (match({TokenType::IDENTIFIER})) {
+                    param_name = previous();
+                } else {
+                    throw error(peek(), "Thiếu tên tham số trong anonymous function.");
+                }
+                if (match({TokenType::COLON})) {
+                    param_type = parse_type();
+                }
+                params.emplace_back(param_name, std::move(param_type), is_static);
+            } while (match({TokenType::COMMA}));
+        }
+        consume(TokenType::RPAREN, "Thiếu ')' sau danh sách tham số anonymous function.");
+        std::optional<AST::TypeNodePtr> return_type = std::nullopt;
+        if (match({TokenType::COLON})) {
+            return_type = parse_type();
+        }
+        std::unique_ptr<AST::BlockStmt> body = block();
+        return std::make_unique<AST::FunctionExpr>(func_kw, std::move(params), std::move(return_type), std::move(body));
     }
 
 } // namespace Linh

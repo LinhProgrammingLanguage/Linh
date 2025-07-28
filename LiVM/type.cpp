@@ -1,4 +1,5 @@
 #include "type.hpp"
+#include "Functional/Func.hpp"
 #include <fmt/core.h>
 
 namespace Linh
@@ -98,25 +99,21 @@ namespace Linh
             return "array";
         if (std::holds_alternative<Map>(val))
             return "map";
+        if (std::holds_alternative<FunctionPtr>(val))
+            return "function";
         return "unknown";
     }
 
     std::string to_str(const Value &val)
     {
-        if (std::holds_alternative<std::monostate>(val))
-            return "sol";
-        if (std::holds_alternative<std::string>(val))
-            return std::get<std::string>(val);
         if (std::holds_alternative<int64_t>(val))
             return std::to_string(std::get<int64_t>(val));
         if (std::holds_alternative<uint64_t>(val))
-        {
-            return fmt::to_string(std::get<uint64_t>(val));
-        }
+            return std::to_string(std::get<uint64_t>(val));
         if (std::holds_alternative<double>(val))
-        {
-            return format_float_linh(std::get<double>(val));
-        }
+            return fmt::format("{:.6g}", std::get<double>(val));
+        if (std::holds_alternative<std::string>(val))
+            return std::get<std::string>(val);
         if (std::holds_alternative<bool>(val))
             return std::get<bool>(val) ? "true" : "false";
         if (std::holds_alternative<Array>(val))
@@ -125,9 +122,9 @@ namespace Linh
             std::string result = "[";
             for (size_t i = 0; i < arr->size(); ++i)
             {
-                result += to_str((*arr)[i]);
-                if (i + 1 < arr->size())
+                if (i > 0)
                     result += ", ";
+                result += to_str((*arr)[i]);
             }
             result += "]";
             return result;
@@ -136,14 +133,35 @@ namespace Linh
         {
             const auto &map = std::get<Map>(val);
             std::string result = "{";
-            size_t count = 0;
-            for (const auto &kv : *map)
+            bool first = true;
+            for (const auto &[key, value] : *map)
             {
-                result += fmt::format("{}: {}", kv.first, to_str(kv.second));
-                if (++count < map->size())
+                if (!first)
                     result += ", ";
+                result += to_str(key) + ": " + to_str(value);
+                first = false;
             }
             result += "}";
+            return result;
+        }
+        if (std::holds_alternative<FunctionPtr>(val))
+        {
+            const auto &fn = std::get<FunctionPtr>(val);
+            std::string result = fmt::format("<function {}(", fn->name);
+            
+            // Hiển thị tham số
+            for (size_t i = 0; i < fn->params.size(); ++i) {
+                if (i > 0) result += ", ";
+                
+                const auto& param = fn->params[i];
+                if (param.is_static) result += "vas ";
+                result += param.name;
+                if (param.type.has_value()) {
+                    result += ": " + param.type.value();
+                }
+            }
+            
+            result += ")>";
             return result;
         }
         return "<unknown>";

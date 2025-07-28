@@ -395,6 +395,21 @@ namespace Linh
                 {
                     type = SemanticAnalyzer::get_linh_literal_type(lit);
                 }
+                // Nếu initializer là IdentifierExpr và nó là function đã khai báo
+                else if (auto id = dynamic_cast<AST::IdentifierExpr *>(stmt->initializer.get()))
+                {
+                    if (is_function_declared(id->name.lexeme)) {
+                        type = "function";
+                        if (function_param_counts.count(id->name.lexeme))
+                            var_func_param_counts[stmt->name.lexeme] = function_param_counts[id->name.lexeme];
+                    }
+                }
+                // Nếu initializer là anonymous function (FunctionExpr)
+                else if (auto fnexpr = dynamic_cast<AST::FunctionExpr *>(stmt->initializer.get()))
+                {
+                    type = "function";
+                    var_func_param_counts[stmt->name.lexeme] = fnexpr->params.size();
+                }
             }
             else
             {
@@ -990,20 +1005,33 @@ namespace Linh
                     "input", "type", "str", "int", "float", "bool", "uint", "id"}; // Thêm "id"
                 if (!builtin_funcs.count(id->name.lexeme))
                 {
-                    if (!is_function_declared(id->name.lexeme))
-                    {
-                        push_semantic_error(errors, id->name.line, id->name.column_start, "Function '" + id->name.lexeme + "' called but not declared.");
-                    }
-                }
-                // Không cần báo lỗi nếu tên này là biến (vì có thể shadow hoặc cho phép tên biến trùng tên hàm)
-                // Kiểm tra số lượng tham số khi gọi hàm (trừ input, type)
-                if (id->name.lexeme != "input" && id->name.lexeme != "type" && function_param_counts.count(id->name.lexeme))
-                {
-                    size_t expected = function_param_counts[id->name.lexeme];
-                    size_t actual = expr->arguments.size();
-                    if (expected != actual)
-                    {
-                        push_semantic_error(errors, id->name.line, id->name.column_start, "Function '" + id->name.lexeme + "' called with wrong number of arguments (expected " + std::to_string(expected) + ", got " + std::to_string(actual) + ").");
+                    // Nếu là function đã khai báo thì kiểm tra như cũ
+                    if (is_function_declared(id->name.lexeme)) {
+                        // Kiểm tra số lượng tham số khi gọi hàm (trừ input, type)
+                        if (id->name.lexeme != "input" && id->name.lexeme != "type" && function_param_counts.count(id->name.lexeme))
+                        {
+                            size_t expected = function_param_counts[id->name.lexeme];
+                            size_t actual = expr->arguments.size();
+                            if (expected != actual)
+                            {
+                                push_semantic_error(errors, id->name.line, id->name.column_start, "Function '" + id->name.lexeme + "' called with wrong number of arguments (expected " + std::to_string(expected) + ", got " + std::to_string(actual) + ").");
+                            }
+                        }
+                    } else {
+                        // Nếu là biến kiểu function object thì cho phép gọi như hàm
+                        if (var_types.count(id->name.lexeme) && var_types[id->name.lexeme] == "function") {
+                            // Kiểm tra số lượng tham số nếu có thể
+                            if (var_func_param_counts.count(id->name.lexeme)) {
+                                size_t expected = var_func_param_counts[id->name.lexeme];
+                                size_t actual = expr->arguments.size();
+                                if (expected != actual) {
+                                    push_semantic_error(errors, id->name.line, id->name.column_start, "Function variable '" + id->name.lexeme + "' called with wrong number of arguments (expected " + std::to_string(expected) + ", got " + std::to_string(actual) + ").");
+                                }
+                            }
+                        } else {
+                            // Không phải function object, báo lỗi như cũ
+                            push_semantic_error(errors, id->name.line, id->name.column_start, "Function '" + id->name.lexeme + "' called but not declared.");
+                        }
                     }
                 }
             }
@@ -1108,6 +1136,12 @@ namespace Linh
             for (const auto &arg : expr->arguments)
                 if (arg)
                     arg->accept(this);
+            return {};
+        }
+        std::any SemanticAnalyzer::visitFunctionExpr(AST::FunctionExpr *expr)
+        {
+            // Cho phép anonymous function expression, không cần kiểm tra gì đặc biệt
+            // Có thể mở rộng kiểm tra tham số, return type nếu cần
             return {};
         }
 

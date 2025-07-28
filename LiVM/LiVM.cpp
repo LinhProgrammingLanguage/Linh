@@ -11,6 +11,8 @@
 #include <functional>
 #include <array>
 #include <fmt/format.h>
+#include <vector>
+#include "Functional/Func.hpp" // Thêm dòng này cho Function support
 
 #ifdef _DEBUG
 // Helper to print a Value for debug
@@ -237,6 +239,8 @@ namespace Linh
             return "CALL";
         case OpCode::RET:
             return "RET";
+        case OpCode::PUSH_FUNCTION:
+            return "PUSH_FUNCTION";
         case OpCode::PRINT:
             return "PRINT";
         case OpCode::INPUT:
@@ -409,6 +413,30 @@ namespace Linh
     static void handle_PUSH_BOOL(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
         vm.push(std::get<bool>(instr.operand));
     }
+    static void handle_PUSH_FUNCTION(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+        try {
+#ifdef _DEBUG
+            std::cerr << "[DEBUG] PUSH_FUNCTION: operand index = " << instr.operand.index() << std::endl;
+#endif
+            if (instr.operand.index() == 6) { // FunctionPtr is at index 6 in BytecodeValue
+                auto fn = std::get<6>(instr.operand);
+                Value function_value(fn);
+#ifdef _DEBUG
+                std::cerr << "[DEBUG] PUSH_FUNCTION: function_value index = " << function_value.index() << std::endl;
+#endif
+                vm.push(function_value);
+#ifdef _DEBUG
+                std::cerr << "[DEBUG] PUSH_FUNCTION: pushed function object, stack size = " << vm.stack.size() << std::endl;
+#endif
+            } else {
+                std::cerr << "[ERROR] PUSH_FUNCTION: wrong operand type, expected FunctionPtr, got index " << instr.operand.index() << std::endl;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] PUSH_FUNCTION: exception: " << e.what() << std::endl;
+        } catch (...) {
+            std::cerr << "[ERROR] PUSH_FUNCTION: unknown exception" << std::endl;
+        }
+    }
 
     static void handle_LOAD_PACKAGE_CONST(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
         // Giả sử operand là tên hằng số package (string)
@@ -481,6 +509,7 @@ namespace Linh
         table[static_cast<size_t>(OpCode::PUSH_UINT)] = handle_PUSH_UINT;
         table[static_cast<size_t>(OpCode::PUSH_STR)] = handle_PUSH_STR;
         table[static_cast<size_t>(OpCode::PUSH_BOOL)] = handle_PUSH_BOOL;
+        table[static_cast<size_t>(OpCode::PUSH_FUNCTION)] = handle_PUSH_FUNCTION;
         table[static_cast<size_t>(OpCode::LOAD_PACKAGE_CONST)] = handle_LOAD_PACKAGE_CONST;
         return table;
     }();
@@ -576,9 +605,10 @@ namespace Linh
                 std::cerr << "[DEBUG] Entering switch case for opcode: " << opcode_name(instr.opcode) << std::endl;
 #endif
                 case OpCode::PUSH_INT:
-                    // If you want to support int128, check here
-                    // For now, always push int64_t
                     push(std::get<int64_t>(instr.operand));
+#ifdef _DEBUG
+                    std::cerr << "[DEBUG] PUSH_INT: stack size = " << stack.size() << ", top index = " << stack.back().index() << std::endl;
+#endif
                     break;
                 case OpCode::PUSH_UINT:
                     // Hỗ trợ uint64_t
@@ -594,6 +624,12 @@ namespace Linh
                     break;
                 case OpCode::PUSH_BOOL:
                     push(std::get<bool>(instr.operand));
+                    break;
+                case OpCode::PUSH_FUNCTION:
+#ifdef _DEBUG
+                    std::cerr << "[DEBUG] PUSH_FUNCTION case reached" << std::endl;
+#endif
+                    handle_PUSH_FUNCTION(*this, instr, chunk, ip);
                     break;
                 case OpCode::POP:
                     pop();
@@ -740,19 +776,23 @@ namespace Linh
                 {
                     int idx = std::get<int64_t>(instr.operand);
 #ifdef _DEBUG
-                    std::cerr << "[DEBUG] LOAD_VAR idx=" << idx << ", variables.size()=" << variables.size() << std::endl;
+                    std::cerr << "[DEBUG] LOAD_VAR: loading variable index " << idx << std::endl;
+                    std::cerr << "[DEBUG] LOAD_VAR: variables.size() = " << variables.size() << std::endl;
 #endif
-                    if (variables.count(idx))
-                        push(variables[idx]);
-                    else
-                    {
+                    if (variables.count(idx)) {
+                        auto value = variables[idx];
+#ifdef _DEBUG
+                        std::cerr << "[DEBUG] LOAD_VAR: loaded value index = " << value.index() << std::endl;
+#endif
+                        push(value);
+#ifdef _DEBUG
+                        std::cerr << "[DEBUG] LOAD_VAR: after push, stack size = " << stack.size() << ", top index = " << stack.back().index() << std::endl;
+#endif
+                    } else {
                         // Nếu tên biến là error.message và error tồn tại, trả về error
-                        if (idx == 3 && variables.count(2))
-                        {
+                        if (idx == 3 && variables.count(2)) {
                             push(variables[2]);
-                        }
-                        else
-                        {
+                        } else {
                             std::cerr << "VM: LOAD_VAR unknown variable index " << idx << std::endl;
                             push(int64_t(0));
                         }
@@ -869,6 +909,8 @@ namespace Linh
                         type_str = "array";
                     else if (std::holds_alternative<Map>(val))
                         type_str = "map";
+                    else if (std::holds_alternative<FunctionPtr>(val))
+                        type_str = "function";
                     push(type_str); // Đẩy lại kết quả lên stack để PRINT lấy ra
                     break;
                 }
@@ -1026,10 +1068,52 @@ namespace Linh
                         push(result);
                         break;
                     }
+                    // Kiểm tra xem có function object trên stack không
+#ifdef _DEBUG
+                    std::cerr << "[DEBUG] CALL: checking for function object on stack, size=" << stack.size() << std::endl;
+                    if (!stack.empty()) {
+                        std::cerr << "[DEBUG] CALL: top of stack index = " << stack.back().index() << std::endl;
+                    }
+#endif
+                    if (!stack.empty() && stack.back().index() == 8) { // FunctionPtr is at index 8 in Value
+#ifdef _DEBUG
+                        std::cerr << "[DEBUG] CALL: found function object, calling it" << std::endl;
+#endif
+                        // Gọi function object
+                        auto fn = std::get<8>(stack.back());
+                        pop(); // Pop function object
+                        
+                        // Thu thập arguments từ stack (arguments được push theo thứ tự ngược)
+                        std::vector<Value> args;
+                        size_t expected_args = fn->params.size();
+                        
+                        // Arguments được push theo thứ tự từ trái sang phải, nên trên stack sẽ ngược lại
+                        for (size_t i = 0; i < expected_args; ++i) {
+                            if (stack.empty()) {
+                                std::cerr << "Error: Not enough arguments for function " << fn->name << std::endl;
+                                push(Value()); // Push default value
+                                break;
+                            }
+                            args.insert(args.begin(), pop()); // Insert at beginning để giữ thứ tự đúng
+                        }
+                        
+#ifdef _DEBUG
+                        std::cerr << "[DEBUG] CALL: calling function " << fn->name << " with " << args.size() << " arguments" << std::endl;
+#endif
+                        
+                        // Gọi function object
+                        auto result = call_function(fn, args, *this);
+                        push(result);
+#ifdef _DEBUG
+                        std::cerr << "[DEBUG] CALL: function executed, result pushed to stack, ip=" << ip << std::endl;
+#endif
+                        break;
+                    }
+                    
                     if (!functions.count(fname))
                     {
                         std::cerr << "VM: Unknown function '" << fname << "'\n";
-                        return;
+                        break;
                     }
                     const auto &fn = functions[fname];
                     // Pop arguments in reverse order
@@ -2408,17 +2492,62 @@ namespace Linh
             ++ip;
     }
     static void handle_CALL(LiVM& vm, const Instruction& instr, const BytecodeChunk& chunk, size_t& ip) {
-        std::string func_name = std::get<std::string>(instr.operand);
-        auto it = vm.functions.find(func_name);
-        if (it != vm.functions.end()) {
-            // Push return address
-            vm.call_stack.push_back({ip + 1, {}});
-            // Set up new frame
-            ip = 0;
-            // Note: This is simplified - in real implementation you'd need to handle parameters
-        } else {
-            std::cerr << "VM: Unknown function '" << func_name << "'" << std::endl;
+#ifdef _DEBUG
+        std::cerr << "[DEBUG] handle_CALL: entering function" << std::endl;
+        std::cerr << "[DEBUG] CALL: stack size = " << vm.stack.size() << std::endl;
+        if (!vm.stack.empty()) {
+            std::cerr << "[DEBUG] CALL: top of stack index = " << vm.stack.back().index() << std::endl;
+        }
+#endif
+        // Kiểm tra xem có function object trên stack không
+        if (!vm.stack.empty() && vm.stack.back().index() == 8) { // FunctionPtr is at index 8 in Value
+#ifdef _DEBUG
+            std::cerr << "[DEBUG] CALL: found function object on stack" << std::endl;
+#endif
+            // Gọi function object
+            auto fn = std::get<8>(vm.stack.back());
+            vm.pop(); // Pop function object
+            
+            // Thu thập arguments từ stack (arguments được push theo thứ tự ngược)
+            std::vector<Value> args;
+            size_t expected_args = fn->params.size();
+            
+            // Arguments được push theo thứ tự từ trái sang phải, nên trên stack sẽ ngược lại
+            for (size_t i = 0; i < expected_args; ++i) {
+                if (vm.stack.empty()) {
+                    std::cerr << "Error: Not enough arguments for function " << fn->name << std::endl;
+                    vm.push(Value()); // Push default value
+                    ++ip;
+                    return;
+                }
+                args.insert(args.begin(), vm.pop()); // Insert at beginning để giữ thứ tự đúng
+            }
+            
+#ifdef _DEBUG
+            std::cerr << "[DEBUG] CALL: calling function " << fn->name << " with " << args.size() << " arguments" << std::endl;
+#endif
+            
+            // Gọi function object
+            auto result = call_function(fn, args, vm);
+            vm.push(result);
             ++ip;
+        } else {
+#ifdef _DEBUG
+            std::cerr << "[DEBUG] CALL: no function object found, falling back to legacy call" << std::endl;
+#endif
+            // Gọi function theo tên (legacy behavior)
+            std::string func_name = std::get<std::string>(instr.operand);
+            auto it = vm.functions.find(func_name);
+            if (it != vm.functions.end()) {
+                // Push return address
+                vm.call_stack.push_back({ip + 1, {}});
+                // Set up new frame
+                ip = 0;
+                // Note: This is simplified - in real implementation you'd need to handle parameters
+            } else {
+                std::cerr << "VM: Unknown function '" << func_name << "'" << std::endl;
+                ++ip;
+            }
         }
     }
     static void handle_RET(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t& ip) {
@@ -2436,9 +2565,17 @@ namespace Linh
     }
     static void handle_LOAD_VAR(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
         int idx = std::get<int64_t>(instr.operand);
-        if (vm.variables.count(idx))
-            vm.push(vm.variables[idx]);
-        else {
+#ifdef _DEBUG
+        std::cerr << "[DEBUG] LOAD_VAR: loading variable index " << idx << std::endl;
+        std::cerr << "[DEBUG] LOAD_VAR: variables.size() = " << vm.variables.size() << std::endl;
+#endif
+        if (vm.variables.count(idx)) {
+            auto value = vm.variables[idx];
+#ifdef _DEBUG
+            std::cerr << "[DEBUG] LOAD_VAR: loaded value index = " << value.index() << std::endl;
+#endif
+            vm.push(value);
+        } else {
             // Nếu tên biến là error.message và error tồn tại, trả về error
             if (idx == 3 && vm.variables.count(2)) {
                 vm.push(vm.variables[2]);
@@ -2501,10 +2638,16 @@ namespace Linh
         vm.push(input_val);
     }
     static void handle_TYPEOF(LiVM& vm, const Instruction& instr, const BytecodeChunk&, size_t&) {
+#ifdef _DEBUG
+        std::cerr << "[DEBUG] TYPEOF: starting" << std::endl;
+#endif
         if (vm.stack.empty()) {
             std::cerr << "ERROR [Line " << instr.line << ", Col " << instr.col << "] RuntimeError : VM stack underflow" << std::endl;
         } else {
             auto val = vm.pop();
+#ifdef _DEBUG
+            std::cerr << "[DEBUG] TYPEOF: value index = " << val.index() << std::endl;
+#endif
             std::string type_str = "sol";
             if (std::holds_alternative<int64_t>(val))
                 type_str = "int";
@@ -2520,6 +2663,11 @@ namespace Linh
                 type_str = "array";
             else if (std::holds_alternative<Map>(val))
                 type_str = "map";
+            else if (std::holds_alternative<FunctionPtr>(val))
+                type_str = "function";
+#ifdef _DEBUG
+            std::cerr << "[DEBUG] TYPEOF: returning " << type_str << std::endl;
+#endif
             vm.push(type_str);
         }
     }
@@ -2703,6 +2851,72 @@ namespace Linh
     }
     static void handle_END_TRY(LiVM&, const Instruction&, const BytecodeChunk&, size_t&) {
         /* Xử lý END_TRY nếu cần */
+    }
+
+    // Implementation of run_chunk for function execution
+    void LiVM::run_chunk(const BytecodeChunk &chunk) {
+        size_t local_ip = 0;
+#ifdef _DEBUG
+        std::cerr << "[DEBUG] run_chunk: starting execution with " << chunk.size() << " instructions" << std::endl;
+#endif
+        
+        while (local_ip < chunk.size()) {
+            const auto &instr = chunk[local_ip];
+            
+            // Simple execution without optimization for function calls
+            switch (instr.opcode) {
+                case OpCode::PUSH_INT:
+                    push(std::get<int64_t>(instr.operand));
+                    break;
+                case OpCode::PUSH_UINT:
+                    push(std::get<uint64_t>(instr.operand));
+                    break;
+                case OpCode::PUSH_FLOAT:
+                    push(std::get<double>(instr.operand));
+                    break;
+                case OpCode::PUSH_STR:
+                    push(std::get<std::string>(instr.operand));
+                    break;
+                case OpCode::PUSH_BOOL:
+                    push(std::get<bool>(instr.operand));
+                    break;
+                case OpCode::LOAD_VAR:
+                    handle_LOAD_VAR(*this, instr, chunk, local_ip);
+                    break;
+                case OpCode::STORE_VAR:
+                    handle_STORE_VAR(*this, instr, chunk, local_ip);
+                    break;
+                case OpCode::ADD:
+                    handle_ADD(*this, instr, chunk, local_ip);
+                    break;
+                case OpCode::SUB:
+                    handle_SUB(*this, instr, chunk, local_ip);
+                    break;
+                case OpCode::MUL:
+                    handle_MUL(*this, instr, chunk, local_ip);
+                    break;
+                case OpCode::DIV:
+                    handle_DIV(*this, instr, chunk, local_ip);
+                    break;
+                case OpCode::MOD:
+                    handle_MOD(*this, instr, chunk, local_ip);
+                    break;
+                case OpCode::PRINT:
+                    handle_PRINT(*this, instr, chunk, local_ip);
+                    break;
+                case OpCode::RET:
+#ifdef _DEBUG
+                    std::cerr << "[DEBUG] run_chunk: RET instruction, returning from function" << std::endl;
+#endif
+                    return; // Return from function
+                case OpCode::HALT:
+                    return; // End execution
+                default:
+                    std::cerr << "VM: Unknown opcode in function: " << static_cast<int>(instr.opcode) << std::endl;
+                    break;
+            }
+            local_ip++;
+        }
     }
 
 } // namespace Linh

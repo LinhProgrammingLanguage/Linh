@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <tuple>
 #include <utility>
+#include <memory>
+#include "../../LiVM/Functional/Func.hpp" // Include FunctionObject
 
 namespace Linh
 {
@@ -61,6 +63,7 @@ namespace Linh
         // Function
         CALL,
         RET,
+        PUSH_FUNCTION, // Push function object lên stack
 
         // Special
         PRINT,
@@ -101,7 +104,8 @@ namespace Linh
         double,
         std::string,
         bool,
-        std::tuple<int64_t, int64_t, int64_t, std::string> // <--- Thêm dòng này
+        std::tuple<int64_t, int64_t, int64_t, std::string>, // <--- Thêm dòng này
+        std::shared_ptr<FunctionObject> // FunctionPtr support
         >;
 
     struct Instruction

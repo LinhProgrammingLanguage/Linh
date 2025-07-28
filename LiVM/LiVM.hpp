@@ -16,6 +16,7 @@ namespace Linh
     public:
         LiVM();
         void run(const BytecodeChunk &chunk);
+        void run_chunk(const BytecodeChunk &chunk); // Thêm method này cho function execution
 
         void type();
 
@@ -81,6 +82,8 @@ namespace Linh
         friend void handle_PUSH_UINT(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
         friend void handle_PUSH_STR(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
         friend void handle_PUSH_BOOL(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend void handle_PUSH_FUNCTION(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
+        friend Value call_function(FunctionPtr, const std::vector<Value>&, LiVM&);
         friend void handle_LOAD_PACKAGE_CONST(LiVM&, const Instruction&, const BytecodeChunk&, size_t&);
 
         // Optimization methods

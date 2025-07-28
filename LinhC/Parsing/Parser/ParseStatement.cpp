@@ -96,7 +96,18 @@ namespace Linh
             // std::cout << "PARSER_BLOCK: Vòng lặp trong block, parsing declaration. Peek: " << debug_token_info(peek()) << std::endl;
             statements_in_block.push_back(declaration()); // Trong một block, có thể có khai báo hoặc câu lệnh
         }
-        consume(TokenType::RBRACE, "Thiếu '}' để kết thúc khối lệnh.");
+        // Nếu đã hết file và token cuối cùng đã parse là RBRACE thì kết thúc block mà không báo lỗi
+        if (is_at_end() && !m_tokens.empty() && m_tokens[m_tokens.size()-2].type == TokenType::RBRACE) {
+            // Đã parse xong block, return luôn
+            return std::make_unique<AST::BlockStmt>(std::move(statements_in_block), opening_brace_for_this_block);
+        }
+        // Nếu đã hết file mà token cuối cùng là RBRACE thì advance để consume và kết thúc block
+        if (is_at_end() && !m_tokens.empty() && m_tokens.back().type == TokenType::RBRACE) {
+            m_current = m_tokens.size() - 1; // Đặt con trỏ tới RBRACE cuối cùng
+            advance(); // Consume RBRACE
+        } else {
+            consume(TokenType::RBRACE, "Thiếu '}' để kết thúc khối lệnh.");
+        }
 
         // std::cout << "PARSER_BLOCK: block() finished. Consumed RBRACE. Returning BlockStmt for brace at line "
         //           << opening_brace_for_this_block.line << std::endl;

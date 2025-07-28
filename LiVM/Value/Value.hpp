@@ -9,6 +9,12 @@
 #include <unordered_set>
 #include <stack>
 
+// Forward declaration
+namespace Linh {
+    struct FunctionObject;
+    using FunctionPtr = std::shared_ptr<FunctionObject>;
+}
+
 namespace Linh
 {
     struct Value; // Forward declaration
@@ -23,7 +29,9 @@ namespace Linh
         double,
         std::string,
         Array,
-        Map>;
+        Map,
+        std::shared_ptr<FunctionObject> // Thêm dòng này
+    >;
 
     // String interning singleton
     class StringInterner {

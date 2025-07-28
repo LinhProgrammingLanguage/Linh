@@ -70,6 +70,7 @@ namespace Linh
             std::any visitInterpolatedStringExpr(AST::InterpolatedStringExpr *expr) override;
             std::any visitMemberExpr(AST::MemberExpr *expr) override;
             std::any visitMethodCallExpr(AST::MethodCallExpr *expr) override;
+            std::any visitFunctionExpr(AST::FunctionExpr *expr) override;
 
             const std::vector<Linh::Error> &get_errors() const;
 
@@ -115,6 +116,7 @@ namespace Linh
             std::unordered_map<std::string, std::string> var_types;        // tên biến -> kiểu
             std::unordered_map<std::string, std::string> var_kinds;        // tên biến -> "vas"/"const"/"var"
             std::unordered_map<std::string, size_t> function_param_counts; // tên hàm -> số lượng tham số
+            std::unordered_map<std::string, size_t> var_func_param_counts; // tên biến function object -> số lượng tham số
 
             // --- Bổ sung quản lý str_limit cho từng biến kiểu str<index> ---
             std::unordered_map<std::string, int> var_str_limit; // tên biến -> str_limit

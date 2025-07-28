@@ -1,0 +1,14 @@
+import fs
+func handleFileOpen(var err, var fd) {
+    print("func đã được gọi")
+    print("~> &{err}")
+    if (err != "") {
+        print(err)
+        return sol // sol là giá trị mặt định không có gì
+    } else {
+        print("~~~")
+    }
+    print("---")
+    print(fd)
+}
+fs.open('./Li/fs/demo.txt', 'r', handleFileOpen)

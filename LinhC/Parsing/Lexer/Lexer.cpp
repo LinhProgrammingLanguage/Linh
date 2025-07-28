@@ -389,8 +389,7 @@ namespace Linh
             return;
         }
         advance();
-        if (!value_str.empty())
-            create_and_add_token(TokenType::STR, value_str, start_line, start_col);
+        create_and_add_token(TokenType::STR, value_str, start_line, start_col);
     }
     void Lexer::handle_number_literal(int start_line, int start_col)
     {

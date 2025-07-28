@@ -179,48 +179,17 @@ namespace Linh
     void BytecodeEmitter::emit(const AST::StmtList &stmts)
     {
         chunk.clear();
-        // --- Emit all function definitions first ---
+        // --- Emit all statements including function definitions ---
+#ifdef _DEBUG
+        std::cerr << "[DEBUG] BytecodeEmitter::emit: processing " << stmts.size() << " statements" << std::endl;
+#endif
         for (const auto &stmt : stmts)
         {
-            if (auto *fn = dynamic_cast<AST::FunctionDeclStmt *>(stmt.get()))
-            {
-                // Prepare function info
-                FunctionInfo finfo;
-                // Save old var_table/next_var_index
-                auto old_var_table = var_table;
-                auto old_next_var_index = next_var_index;
-                var_table.clear();
-                next_var_index = 0;
-                // Add parameters to var_table
-                for (const auto &param : fn->params)
-                {
-                    finfo.param_names.push_back(param.name.lexeme);
-                    get_var_index(param.name.lexeme);
-                }
-                // Emit function body into finfo.code
-                if (fn->body)
-                {
-                    auto old_chunk = chunk;
-                    chunk.clear();
-                    for (const auto &s : fn->body->statements)
-                        if (s)
-                            s->accept(this);
-                    emit_instr(OpCode::RET);
-                    finfo.code = chunk;
-                    chunk = old_chunk;
-                }
-                functions[fn->name.lexeme] = std::move(finfo);
-                var_table = old_var_table;
-                next_var_index = old_next_var_index;
-            }
-        }
-        // --- Emit global code (non-function statements) ---
-        for (const auto &stmt : stmts)
-        {
-            if (!dynamic_cast<AST::FunctionDeclStmt *>(stmt.get()))
-            {
-                if (stmt)
-                    stmt->accept(this);
+            if (stmt) {
+#ifdef _DEBUG
+                std::cerr << "[DEBUG] BytecodeEmitter::emit: processing statement type" << std::endl;
+#endif
+                stmt->accept(this);
             }
         }
         emit_instr(OpCode::HALT);
@@ -595,7 +564,58 @@ namespace Linh
         }
     }
 
-    void BytecodeEmitter::visitFunctionDeclStmt(AST::FunctionDeclStmt *) {}
+    void BytecodeEmitter::visitFunctionDeclStmt(AST::FunctionDeclStmt *stmt) {
+        std::vector<FunctionParameter> function_params;
+        
+        // Chuyển đổi từ FuncParamNode sang FunctionParameter
+        for (const auto& param : stmt->params) {
+            std::optional<std::string> param_type = std::nullopt;
+            
+            if (param.type.has_value()) {
+                // Chuyển đổi TypeNode thành string
+                // TODO: Implement proper type string conversion
+                param_type = "dynamic"; // Placeholder
+            }
+            
+            function_params.emplace_back(param.name.lexeme, param_type, param.is_static);
+        }
+        
+        // Tạo bytecode cho thân hàm
+        BytecodeChunk function_body;
+        {
+            BytecodeEmitter body_emitter;
+            if (stmt->body) {
+                for (const auto& body_stmt : stmt->body->statements) {
+                    if (body_stmt) {
+                        body_stmt->accept(&body_emitter);
+                    }
+                }
+            }
+            // Thêm RET instruction nếu không có return statement
+            if (body_emitter.chunk.empty() || body_emitter.chunk.back().opcode != OpCode::RET) {
+                body_emitter.emit_instr(OpCode::RET, {}, stmt->getLine(), stmt->getCol());
+            }
+            function_body = body_emitter.chunk; // Gán lại đúng
+        }
+        
+        // Tạo FunctionObject với thân hàm
+#ifdef _DEBUG
+        std::cerr << "[DEBUG] visitFunctionDeclStmt: function body has " << function_body.size() << " instructions" << std::endl;
+#endif
+        auto fn = create_function(stmt->name.lexeme, function_params, function_body);
+        
+        // Lưu function object vào biến
+        int var_idx = get_var_index(stmt->name.lexeme);
+        
+        // Push function object lên stack
+#ifdef _DEBUG
+        std::cerr << "[DEBUG] visitFunctionDeclStmt: creating function object for " << stmt->name.lexeme << std::endl;
+#endif
+        emit_instr(OpCode::PUSH_FUNCTION, fn, stmt->getLine(), stmt->getCol());
+        
+        // Store vào biến
+        emit_instr(OpCode::STORE_VAR, var_idx, stmt->getLine(), stmt->getCol());
+    }
     void BytecodeEmitter::visitReturnStmt(AST::ReturnStmt *stmt)
     {
         if (stmt->value)
@@ -808,10 +828,13 @@ namespace Linh
                 return {};
             }
             // --- User-defined function call ---
-            // Evaluate arguments (push in order)
+            // Emit arguments trước
             for (auto &arg : expr->arguments)
                 if (arg)
                     arg->accept(this);
+            // Sau đó mới LOAD_VAR cho function object
+            emit_instr(OpCode::LOAD_VAR, get_var_index(id->name.lexeme), expr->getLine(), expr->getCol());
+            // Cuối cùng CALL
             emit_instr(OpCode::CALL, id->name.lexeme, expr->getLine(), expr->getCol());
             return {};
         }
@@ -1183,6 +1206,28 @@ namespace Linh
         for (const auto &arg : expr->arguments)
             if (arg)
                 arg->accept(this);
+        return {};
+    }
+
+    std::any BytecodeEmitter::visitFunctionExpr(AST::FunctionExpr *expr) {
+        // Tạo function object không tên (anonymous)
+        std::vector<FunctionParameter> function_params;
+        for (const auto &param : expr->params) {
+            std::optional<std::string> param_type = std::nullopt;
+            if (param.type.has_value() && param.type.value()) {
+                // TODO: convert TypeNode to string
+                param_type = "any";
+            }
+            function_params.emplace_back(param.name.lexeme, param_type, param.is_static);
+        }
+        BytecodeChunk function_body;
+        BytecodeEmitter body_emitter;
+        body_emitter.var_table = var_table; // inherit outer var table for closure (tạm thời)
+        if (expr->body) expr->body->accept(&body_emitter);
+        function_body = body_emitter.chunk;
+        // Tên hàm rỗng cho anonymous
+        auto fn = create_function("", function_params, function_body);
+        emit_instr(OpCode::PUSH_FUNCTION, fn, expr->getLine(), expr->getCol());
         return {};
     }
 }

@@ -1,0 +1,5 @@
+var fn = func(){
+return "Hello func"
+}
+print(fn())
+print(type(fn))

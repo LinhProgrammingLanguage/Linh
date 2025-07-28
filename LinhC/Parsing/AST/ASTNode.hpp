@@ -40,6 +40,7 @@ namespace Linh
         struct ThisExpr;
         struct GroupingExpr;
         struct FuncParamNode;
+        struct FunctionExpr;
 
         struct Stmt
         {
@@ -190,6 +191,7 @@ namespace Linh
         struct InterpolatedStringExpr; // MỚI
         struct MemberExpr;             // MỚI
         struct MethodCallExpr;         // MỚI
+        struct FunctionExpr;
 
         class ExprVisitor
         {
@@ -213,6 +215,7 @@ namespace Linh
             virtual std::any visitInterpolatedStringExpr(InterpolatedStringExpr *expr) = 0; // MỚI
             virtual std::any visitMemberExpr(MemberExpr *expr) = 0;                         // MỚI
             virtual std::any visitMethodCallExpr(MethodCallExpr *expr) = 0;                 // MỚI
+            virtual std::any visitFunctionExpr(FunctionExpr *expr) = 0;
         };
         struct Expr
         {
@@ -612,7 +615,10 @@ namespace Linh
         {
             Token name;
             std::optional<TypeNodePtr> type;
-            FuncParamNode(Token n, std::optional<TypeNodePtr> t) : name(std::move(n)), type(std::move(t)) {}
+            bool is_static; // true nếu có 'vas' keyword
+            
+            FuncParamNode(Token n, std::optional<TypeNodePtr> t, bool static_ = false) 
+                : name(std::move(n)), type(std::move(t)), is_static(static_) {}
         };
 
         struct FunctionDeclStmt : Stmt
@@ -625,6 +631,20 @@ namespace Linh
             FunctionDeclStmt(Token kw, Token n, std::vector<FuncParamNode> p, std::optional<TypeNodePtr> ret, std::unique_ptr<BlockStmt> b)
                 : keyword_func(std::move(kw)), name(std::move(n)), params(std::move(p)), return_type(std::move(ret)), body(std::move(b)) {}
             void accept(StmtVisitor *visitor) override { visitor->visitFunctionDeclStmt(this); }
+            int getLine() const { return keyword_func.line; }
+            int getCol() const { return keyword_func.column_start; }
+        };
+
+        struct FunctionExpr : Expr {
+            Token keyword_func;
+            std::vector<FuncParamNode> params;
+            std::optional<TypeNodePtr> return_type;
+            std::unique_ptr<BlockStmt> body;
+            FunctionExpr(Token kw, std::vector<FuncParamNode> p, std::optional<TypeNodePtr> ret, std::unique_ptr<BlockStmt> b)
+                : keyword_func(std::move(kw)), params(std::move(p)), return_type(std::move(ret)), body(std::move(b)) {}
+            std::any accept(ExprVisitor *visitor) override { return visitor->visitFunctionExpr(this); }
+            int getLine() const { return keyword_func.line; }
+            int getCol() const { return keyword_func.column_start; }
         };
 
     } // namespace AST

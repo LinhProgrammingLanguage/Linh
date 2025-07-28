@@ -231,10 +231,15 @@ namespace Linh
                 {
                     error(peek(), "Cannot have more than 255 parameters.");
                 }
-                // --- Sửa tại đây: cho phép var/vas/const trước tên tham số ---
+                // --- Xử lý var/vas/const trước tên tham số ---
+                bool is_static = false;
                 if (match({TokenType::VAR_KW, TokenType::VAS_KW, TokenType::CONST_KW}))
                 {
-                    // bỏ qua token này, không lưu lại
+                    Token keyword_token = previous();
+                    if (keyword_token.type == TokenType::VAS_KW) {
+                        is_static = true;
+                    }
+                    // var và const hiện tại chưa có ý nghĩa đặc biệt
                 }
                 Token param_name_token = consume(TokenType::IDENTIFIER, "Missing parameter name.");
                 std::optional<AST::TypeNodePtr> param_type_node = std::nullopt;
@@ -252,7 +257,7 @@ namespace Linh
                         }
                     }
                 }
-                parameters_list.emplace_back(param_name_token, std::move(param_type_node));
+                parameters_list.emplace_back(param_name_token, std::move(param_type_node), is_static);
             } while (match({TokenType::COMMA}));
         }
         consume(TokenType::RPAREN, "Missing ')' after parameter list.");

@@ -68,6 +68,8 @@ add_library(LiVMLib STATIC
     LiVM/LiVM.cpp
     LiVM/type.cpp
     LiVM/Loop.cpp
+    LiVM/Functional/Func.cpp
+    LiVM/Functional/Lambda.cpp
     LiVM/iostream/iostream.cpp # Thêm dòng này để build iostream
     LiVM/Math/Math.cpp
     LiVM/Value/Value.cpp
@@ -80,6 +82,8 @@ target_link_libraries(LiVMLib PUBLIC fmt::fmt)
 # --- LiPM Package Manager ---
 add_library(LiPMLib STATIC
     LiPM/LiPM.cpp
+    LiPM/Package/math.cpp
+    LiPM/Package/time.cpp
 )
 target_include_directories(LiPMLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

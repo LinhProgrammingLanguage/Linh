@@ -48,6 +48,7 @@ namespace Linh
         std::any visitInterpolatedStringExpr(AST::InterpolatedStringExpr *expr) override;
         std::any visitMemberExpr(AST::MemberExpr *expr) override;         // Khai báo visitMemberExpr
         std::any visitMethodCallExpr(AST::MethodCallExpr *expr) override; // Khai báo visitMethodCallExpr
+        std::any visitFunctionExpr(AST::FunctionExpr *expr) override;
 
         // StmtVisitor
         void visitExpressionStmt(AST::ExpressionStmt *stmt) override;
